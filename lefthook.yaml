@@ -1,0 +1,15 @@
+assert_lefthook_installed: true
+glob_matcher: doublestar
+
+pre-commit:
+  commands:
+    format-nixfmt:
+      run: nixfmt {staged_files}
+      glob:
+        - '**/*.{nix}'
+      stage_fixed: true
+    format-oxfmt:
+      run: oxfmt {staged_files}
+      glob:
+        - '**/*.{json,md,toml}'
+      stage_fixed: true

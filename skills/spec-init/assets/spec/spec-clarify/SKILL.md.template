@@ -1,0 +1,276 @@
+---
+name: spec-clarify
+description: Guide to identify underspecified areas in a specification to clarify it. Use when users want to ensure a spec is sufficiently detailed and unambiguous before planning or implementation. Also triggers when users ask for clarification on an existing specification.
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+## Execution Flow
+
+### Step 0 - Pre-flight Checks
+
+Run all checks below in order. If any check fails, report the corresponding error and abort immediately.
+
+1. **Spec name provided**: If the input is empty and no spec name can be inferred from the conversation context, abort:
+
+   ```text
+   Error: I do not know which specification to clarify. You can point it out like this:
+
+   - clarify the add-user-auth specification
+   - /spec-clarify add-user-auth
+   ```
+
+2. **Spec file exists**: If `specs/<spec-name>/spec.md` does not exist or is empty, abort:
+
+   ```text
+   Error: No specification found at specs/<spec-name>/spec.md.
+   Run /spec-specify <spec-name> first to create the specification.
+   ```
+
+3. **Resource convention file**: Check whether `specs/inbox/README.md` exists. Record the result as `has_resource_convention` for use in Step 1. This does NOT block execution — if the file is missing, external resource loading is skipped silently.
+
+### Step 1 - Taxonomy Scan
+
+Load the spec file (`specs/<spec-name>/spec.md`). Additionally, if `has_resource_convention` is true (from Step 0), scan `specs/<spec-name>/refs/` for external resources relevant to the `clarify` stage:
+
+1. Read the Resource Type Convention table in `specs/inbox/README.md`.
+2. Identify rows where the `Consumed By` column includes `clarify`.
+3. Collect the `Suffix Pattern` from each matching row.
+4. Glob `specs/<spec-name>/refs/` with the collected patterns.
+5. Load the content of all matched files into working memory as supplementary context — use them to cross-check spec coverage (e.g., functional points present in a loaded resource but missing from the spec count as Partial/Missing in the Functional Scope & Behavior category).
+
+If `has_resource_convention` is false or `specs/<spec-name>/refs/` does not exist, skip external resource loading silently and proceed with the taxonomy scan using only the spec file.
+
+Perform a structured ambiguity and coverage scan using the taxonomy below. For each category, mark status: Clear / Partial / Missing. Produce an internal coverage map for prioritization (do not output the raw map unless no questions will be asked).
+
+- Functional Scope & Behavior:
+   - Core user goals & success criteria
+   - Explicit out-of-scope declarations
+   - User roles / personas differentiation
+
+- Domain & Data Model:
+   - Entities, attributes, relationships
+   - Identity & uniqueness rules
+   - Lifecycle/state transitions
+   - Data volume / scale assumptions
+
+- Interaction & UX Flow:
+   - Critical user journeys / sequences
+   - Error/empty/loading states
+   - Accessibility or localization notes
+
+- Non-Functional Quality Attributes:
+   - Performance (latency, throughput targets)
+   - Scalability (horizontal/vertical, limits)
+   - Reliability & availability (uptime, recovery expectations)
+   - Security & privacy (authN/Z, data protection, threat assumptions)
+   - Compliance / regulatory constraints (if any)
+
+- Integration & External Dependencies:
+   - External services/APIs and failure modes
+   - Data import/export formats
+   - Protocol/versioning assumptions
+
+- Edge Cases & Failure Handling:
+   - Negative scenarios
+   - Rate limiting / throttling
+   - Conflict resolution (e.g., concurrent edits)
+
+- Terminology & Consistency:
+   - Canonical glossary terms
+   - Avoided synonyms / deprecated terms
+
+- Completion Signals:
+   - Acceptance criteria testability
+   - Measurable Definition of Done indicators
+
+- Miscellaneous / Placeholders:
+   - TODO markers / unresolved decisions
+   - Ambiguous adjectives ("robust", "intuitive") lacking quantification
+
+For each category with Partial or Missing status, add a candidate question unless:
+
+- Clarification would not materially change implementation or validation strategy.
+- The detail is technical and does not impact functional clarity.
+
+### Step 2 - Generate Question Queue
+
+Generate (internally) a prioritized queue of candidate clarification questions. Do NOT output them all at once. Apply these constraints:
+
+- Maximum 5 questions total.
+- Each question MUST be answerable with EITHER:
+   - A short multiple-choice selection (2-5 distinct, mutually exclusive options), OR
+   - A one-word / short-phrase answer (explicitly constrain: "Answer in <=10 words").
+- Only include questions whose answers materially impact architecture, data modeling, task decomposition, test design, UX behavior, operational readiness, or compliance validation.
+- Ensure category coverage balance: address the highest-impact unresolved categories first; do not ask two low-impact questions when a single high-impact area (e.g., security posture) remains unresolved.
+- Exclude questions already answered, trivial stylistic preferences, or plan-level execution details (unless blocking correctness).
+- Favor clarifications that reduce downstream rework risk or prevent misaligned acceptance tests.
+- If more than 5 categories remain unresolved, select the top 5 by (Impact x Uncertainty) heuristic.
+
+#### Complexity Guard
+
+After generating the candidate queue, count the total number of Partial or Missing categories from the taxonomy scan (Step 1). If the count exceeds the question quota of 5, the specification likely covers too many independent concern areas for a single focused clarification session — each question can address at most one category, so more unresolved categories than available questions means important areas will inevitably be left unaddressed. Report the following and ask the user for a decision:
+
+```text
+Warning: This specification has [N] taxonomy categories with unresolved ambiguities,
+but the question quota allows only 5. Some areas will remain unaddressed in this session.
+
+Unresolved categories:
+- [Category 1]: [brief reason]
+- [Category 2]: [brief reason]
+...
+
+Options:
+  A - Continue: clarify the top 5 highest-impact categories now (remaining categories
+      will be reported as Outstanding in the summary)
+  B - Split: break this spec into smaller, focused specs. Suggested breakdown:
+      1. [spec-name-1]: [scope description — which categories/features it covers]
+      2. [spec-name-2]: [scope description]
+      3. [spec-name-3]: [scope description] (if needed)
+      Run /spec-specify <spec-name-1> to start with the highest-priority piece.
+  C - Abort
+```
+
+The suggested breakdown SHOULD group related taxonomy categories and user stories into cohesive specs that can each be clarified within the question quota.
+
+If the user chooses A, proceed to Step 3 with the top 5 questions ranked by (Impact x Uncertainty). If the user chooses B or C, abort.
+
+### Step 3 - Questioning Loop
+
+Present questions one at a time by default, but **batch 2-3 questions into a single prompt** when ALL of the following conditions are met:
+
+- The questions come from **different** taxonomy categories (Step 1).
+- No question's answer would change the framing or relevance of another question in the same batch.
+- The batch does not exceed the remaining question quota.
+
+When batching, number the questions clearly (Q1, Q2, Q3) and collect all answers in a single round trip. Apply the same per-question validation rules described below to each answer individually.
+
+For each question (whether presented alone or in a batch):
+
+- For multiple-choice questions:
+   - **Analyze all options** and determine the **most suitable option** based on:
+      - Best practices for the project type.
+      - Common patterns in similar implementations.
+      - Risk reduction (security, performance, maintainability).
+      - Alignment with any explicit project goals or constraints visible in the spec.
+   - Present the **recommended option prominently** at the top with clear reasoning (1-2 sentences).
+   - Format as: `**Recommended:** Option [X] - <reasoning>`.
+   - Ask the user for their answer using whatever interactive questioning tool is available in the runtime environment. If no dedicated tool exists, present the question as text and wait for the user's reply.
+   - Render all options as a Markdown table:
+
+   ```markdown
+   | Option | Description                                        |
+   | ------ | -------------------------------------------------- |
+   | A      | <Option A description>                             |
+   | B      | <Option B description>                             |
+   | C      | <Option C description> (add D/E as needed up to 5) |
+   | Skip   | Skip this question                                 |
+   ```
+
+- For short-answer questions (no meaningful discrete options):
+   - Provide a **suggested answer** based on best practices and context.
+   - Format as: `**Suggested:** <your proposed answer> - <brief reasoning>`.
+   - Then output: `Format: Short answer (<=10 words). Accept the suggestion by saying "yes", or provide your own answer.`
+   - Ask the user for their response using the same interactive mechanism as above.
+
+- After the user answers:
+   - If ambiguous, ask for a quick disambiguation (this does not advance the question counter).
+   - Otherwise, validate that the answer maps to one option or fits the <=10 word constraint.
+   - Once satisfactory, or if the user says "skip", record the result in working memory (do not write to disk yet) and advance to the next queued question.
+
+- Stop asking further questions when:
+   - All critical ambiguities are resolved early (remaining queued items become unnecessary), OR
+   - The question limit is reached.
+- Never reveal future queued questions in advance.
+- If no valid questions exist at start, immediately report that no critical ambiguities were found.
+
+### Step 4 - Integration
+
+After ALL answers are collected (questioning loop in Step 3 is complete), apply them in batch:
+
+- Maintain an in-memory representation of the spec (loaded once at start) plus the raw file contents.
+- Ensure a `## Clarifications` section exists (create it just before the Requirements section if missing).
+- Under it, create a `### Session <N>` subheading, where `<N>` is the next monotonically increasing integer (scan existing `### Session <N>` headings to determine the next number; start at 1 if none exist). If existing session headings use non-standard formats or numbering is inconsistent (e.g., gaps, non-numeric labels), fall back to the next integer after the highest number found among any `### Session <N>` headings, or Session 1 if no valid session numbers are found.
+- **Accepted answers**: Append `- Q: <question>\n  A: <final answer>` under the session heading. Then apply the clarification to the most appropriate section(s):
+   - Functional ambiguity → Update or add a bullet in Functional Requirements.
+   - User interaction / actor distinction → Update the User Stories subsection with the clarified role, constraint, or scenario.
+   - Non-functional constraint → Add/modify measurable criteria in Non-Functional Requirements (convert vague adjective to metric or explicit target).
+   - Edge case / negative flow → Add a new bullet under Edge Cases (or create the subsection if the template provides a placeholder for it).
+   - Terminology conflict → Normalize the term across the spec; retain the original only if necessary by adding `(formerly referred to as "X")` once.
+   - If the clarification invalidates an earlier ambiguous statement, replace that statement instead of duplicating; leave no obsolete contradictory text.
+- **Skipped answers**: Do not record skipped questions. They are discarded — the user can re-run `/spec-clarify` to surface them again if needed.
+- **Do not write to disk in this step.** All changes are held in memory — the single write happens in Step 6.
+- Preserve formatting: do not reorder unrelated sections; keep heading hierarchy intact.
+- Keep each inserted clarification minimal and testable (avoid narrative drift).
+
+### Step 5 - Validate
+
+Perform once after all integrations are applied in memory:
+
+- Clarifications session contains exactly one bullet per accepted answer (no duplicates).
+- Total accepted questions <= 5.
+- Updated sections contain no lingering vague placeholders that the new answers were meant to resolve.
+- No contradictory earlier statement remains (scan for now-invalid alternative choices).
+- Markdown structure is valid; only allowed new headings: `## Clarifications`, `### Session <N>`.
+- Terminology consistency: the same canonical term is used across all updated sections.
+
+### Step 6 - Write
+
+After all validations pass, write the complete in-memory spec state to `specs/<spec-name>/spec.md` in a single atomic operation. This is the **only** step that writes to disk — all prior steps (integration, validation) operate on in-memory content only.
+
+### Step 7 - Summarize
+
+Report the number of questions asked and answered, path to the updated spec, sections touched (list names), and a coverage summary table. Use the following transition rules to determine each category's output status:
+
+| Step 1 Status      | Outcome                              | Output Status   |
+| ------------------ | ------------------------------------ | --------------- |
+| Clear              | —                                    | **Clear**       |
+| Partial or Missing | Question asked and answered          | **Resolved**    |
+| Partial or Missing | Question quota reached before asking | **Outstanding** |
+| Partial or Missing | Low impact, not asked                | **Outstanding** |
+
+Coverage summary table:
+
+| Category                    | Status                        |
+| --------------------------- | ----------------------------- |
+| Functional Scope & Behavior | Clear / Resolved / Outstanding |
+| ...                         | ...                           |
+
+If high-impact unresolved categories remain, explicitly report them with a warning that they SHOULD be addressed before implementation, and suggest the user re-run `/spec-clarify` to address them.
+
+## Guidelines
+
+- Ask for clarification only if:
+   - The choice significantly impacts feature scope or user experience.
+   - Multiple reasonable interpretations exist with different implications.
+   - No reasonable default exists.
+- If critical information is missing, ask the user instead of guessing.
+- If no meaningful ambiguities are found (or all potential questions would be low-impact), report: "No critical ambiguities detected worth formal clarification." and suggest proceeding.
+- Do not ask speculative tech stack questions unless the absence blocks functional clarity.
+- Respect user early termination signals ("stop", "done", "quit").
+- If the quota is reached with unresolved high-impact categories remaining, explicitly report them as Outstanding with rationale and suggest the user re-run `/spec-clarify` to address them.
+
+**Examples of reasonable defaults** (do not ask about these):
+
+- Data retention: Industry-standard practices for the domain
+- Performance targets: Standard web/mobile app expectations unless specified
+- Error handling: User-friendly messages with appropriate fallbacks
+- Authentication method: Standard session-based or OAuth2 for web apps
+- Integration patterns: RESTful APIs unless specified otherwise
+- Logging and monitoring: Basic logging of errors and key events, with alerts for critical issues
+
+**Examples of areas needing clarification**:
+
+- Scope: "Should this include mobile app support or just web?"
+- User types: "Are there different roles with different permissions?"
+- Security: "Are there specific compliance requirements we need to meet?"
+
+**Examples of technical details better left to planning**:
+
+- Specific database choice (SQL vs NoSQL) if it does not impact functional clarity
+- Exact API protocol (REST vs gRPC) if the spec only requires "external API"
+- Internal architecture patterns (monolith vs microservices) if the spec focuses on user-facing behavior

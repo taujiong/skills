@@ -1,0 +1,8 @@
+{
+  "name": "yggdrasil",
+  "private": true,
+  "devDependencies": {
+    "lefthook": "2.1.4",
+    "oxfmt": "0.41.0"
+  }
+}

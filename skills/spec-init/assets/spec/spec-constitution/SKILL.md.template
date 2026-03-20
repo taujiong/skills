@@ -1,0 +1,168 @@
+---
+name: spec-constitution
+description: Guide to create or update the project constitution — a set of non-negotiable principles and quality standards that all spec artifacts must comply with in the spec-driven development workflow. Use when users want to define, amend, or revise project-wide development standards, quality rules, or compliance requirements. Also triggers when users mention coding standards, project rules, architectural constraints, quality gates, or constitution.
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+If the user input is empty or not interpretable, report the following error and abort.
+
+```text
+Error: No valid input provided. Please specify the principles, rules, or standards you want to include in the constitution. For example:
+
+- I want to add a principle about test-first development to ensure code quality and catch issues early
+- /spec-constitution Add a principle about code review requirements to facilitate collaboration and maintain consistency across the team
+```
+
+If the input is present but ambiguous about what principle to add or why it matters, ask the following before proceeding:
+
+- What specific principles, rules, or standards should be included? (e.g., test-first development, security concerns, user experience consistency)
+- Why are these principles important for the project? (e.g., to ensure code quality, to facilitate collaboration, to maintain consistency)
+
+## Execution Flow
+
+### Step 1 - Initialize or Load Constitution
+
+Read `specs/constitution.md`. If the file is missing, copy [constitution-template.md](assets/constitution-template.md) verbatim (including all placeholder tokens and HTML comments) to `specs/constitution.md` — placeholders are resolved in Step 2 and Step 3.
+
+If the file already exists and contains resolved principles (not just placeholders), extract and retain in memory a snapshot of all existing normative rules — each MUST, MUST NOT, SHOULD, SHOULD NOT statement with its parent principle name. This snapshot is used in Step 6 for breaking-change detection.
+
+Identify all placeholder tokens of the form `[ALL_CAPS_IDENTIFIER]`. If none are found, skip to Step 3.
+
+### Step 2 - Collect Values for Placeholders
+
+**Prerequisite**: Step 1 complete — constitution file is loaded and placeholder list is known.
+
+Priority order for resolving each placeholder:
+
+1. **User input**: use verbatim if supplied.
+2. **Repo context**: infer from README, docs, or prior constitution versions.
+3. **Ask**: only when critical information is truly missing (e.g., project name unknown) and cannot be inferred with high confidence from repo context.
+
+If any inferred value is ambiguous and cannot be resolved with high confidence, state the reasoning and ask the user for clarification before finalizing.
+
+### Step 3 - Draft Constitution from Template
+
+**Prerequisite**: Step 1 complete (and Step 2 if placeholders were found). If Step 2 was skipped because no placeholders exist, this prerequisite is automatically satisfied.
+
+**Do not write any files in this step.** Build the complete constitution content in memory only.
+
+- Replace every placeholder with concrete text — no bracket tokens left.
+- Remove inline HTML comments that annotate a filled placeholder (e.g., `<!-- Example: ... -->`). Preserve structural block comments that describe section purpose unless the user explicitly requests a clean file.
+- Use RFC 2119 keywords (MUST, MUST NOT, SHOULD, SHOULD NOT) in uppercase with rationale, rather than vague lowercase "should".
+- Each principle section uses Roman numeral headings (`### I.`, `### II.`, ...) and follows this structure:
+   - One-line `Rationale:` immediately after the heading.
+   - One or more named subsections (`####`) each containing a bullet list of non-negotiable rules.
+
+### Step 4 - Consistency Propagation
+
+**Prerequisite**: Step 3 complete — constitution content is finalized before propagating to templates.
+
+Use the principle type table below to determine what to write into each template, then follow the propagation mechanics to apply the changes.
+
+#### Principle Type to Template Mapping
+
+Use the table below to determine which templates to update for each constitutional principle. A principle may appear in multiple templates if it has actionable checks at each stage.
+
+| Principle Type                                                                                                                    | spec-template.md (Success Criteria)                            | plan-template.md (Constitution Check)                     | tasks-template.md (section: "Phase N: Cross-Cutting Concerns") |
+| --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
+| **Behavioral / UX** — user-perceivable outcomes (e.g., error messages, accessibility, response time felt by users)                | State as technology-agnostic acceptance criterion               | —                                                         | Verify against running system                                  |
+| **Technical constraint** — tool/architecture/service choices (e.g., must use specific auth library, must expose REST not GraphQL) | —                                                              | Gate on the design decision being made                    | Verify the chosen tool/pattern is correctly applied            |
+| **Code quality** — naming, formatting, structure (e.g., naming conventions, file size limits, no magic numbers)                   | —                                                              | —                                                         | Lint/review against real code                                  |
+| **Testing** — test scope, coverage targets, TDD discipline                                                                        | State coverage targets as measurable outcome                   | Gate on test tooling selection and test plan existence     | Run tests, verify coverage, confirm TDD order                  |
+| **Security / Compliance** — auth requirements, data protection, regulatory constraints                                            | State privacy/compliance requirement as user-facing outcome    | Gate on encryption/auth scheme selection                   | Run security scan, audit, or compliance check                  |
+| **Operational** — logging, monitoring, alerting, deployment constraints                                                           | —                                                              | Gate on observability tooling selected                    | Verify logs, metrics, alerts are wired correctly               |
+
+#### Fallback Decision Rule
+
+For any principle that does not fit cleanly into the table above, ask:
+
+> _"Can a reviewer verify this check right now, at this stage, against the artifact that exists?"_
+
+- **Yes** → include it.
+- **No, because the artifact does not exist yet** → omit it; it belongs in a later stage.
+- **No, because this stage forbids implementation details** (spec-template.md) → omit it; it belongs in plan-template.md or tasks-template.md.
+
+#### Propagation Examples
+
+If the constitution includes a principle about page load time performance:
+
+- `spec-template.md` **includes** a success criterion: "Page load time MUST be under X ms for the primary user journey" — this is a technology-agnostic behavioral outcome.
+- `plan-template.md` **includes** a gate: "Performance budget is defined and a profiling/benchmarking tool is selected" — this depends on the technical design.
+- `tasks-template.md` **includes** tasks: "Run performance benchmark, verify p95 load time meets target" — verifiable against real running code.
+
+If the constitution includes a principle about identifier naming (code style):
+
+- `spec-template.md` **omits** it — no identifiers exist at specification time.
+- `plan-template.md` **omits** it — no identifiers exist at design time.
+- `tasks-template.md` **includes** it — real code exists and naming can be reviewed.
+
+#### Propagation Mechanics
+
+**Do not write any files in this step.** For each template, derive the updated content in memory:
+
+1. Locate the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pair.
+2. Compute the replacement content between the markers based on the principle type mapping above.
+3. Preserve the markers themselves and the two boilerplate comment lines between them word-for-word: the "managed by spec-constitution" line and the "Run /spec-constitution" line.
+4. Hold the updated template content in memory — all writes happen in Step 6.
+
+### Step 5 - Validate
+
+**Prerequisite**: Step 4 complete — all applicable templates derived in memory before writing to disk.
+
+Validate the following:
+
+- [ ] No remaining `[BRACKET_TOKENS]`.
+- [ ] Lines under ~120 characters where practical.
+- [ ] Principles use RFC 2119 keywords (MUST, MUST NOT, SHOULD, SHOULD NOT) in uppercase, each with a rationale line.
+- [ ] Each principle section has a `Rationale:` line immediately after the heading and at least one named subsection (`####`) with bullet rules.
+- [ ] Standards sections provide clear, actionable requirements.
+- [ ] All applicable templates have their `constitution:begin/end` blocks updated and contain no stale content from prior constitution versions.
+- [ ] Glossary: if any principle uses domain-specific or ambiguous terms, the table contains at least one entry with no placeholder rows remaining. If no domain-specific terms are used, replace the placeholder row with `N/A`.
+
+### Step 6 - Write
+
+After all validations pass, write all files in one batch. This is the **only** step that writes to disk:
+
+- Overwrite `specs/constitution.md` with the drafted constitution content.
+- For each applicable template: locate the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pair, replace **only** the content between the markers with the updated content derived in Step 4, and preserve all content outside the markers unchanged. The markers themselves and the two boilerplate comment lines between them MUST be preserved word-for-word.
+
+### Step 7 - Breaking-Change Detection
+
+**Skip this step if** no prior constitution snapshot was captured in Step 1 (i.e., this is a first-time constitution creation).
+
+Compare the new constitution (from Step 3) against the prior snapshot (from Step 1). For each rule, determine whether the change **tightens constraints on existing code** — i.e., code that was compliant under the old constitution may now be non-compliant. Trigger a warning when any of the following is detected:
+
+- A new MUST or MUST NOT rule is **added** (existing code may never have implemented it).
+- An existing SHOULD is **upgraded** to MUST (previously optional behavior is now mandatory).
+- An existing MUST is **reversed** to MUST NOT, or vice versa (compliant code is now in violation).
+
+**Do NOT warn** when:
+
+- A rule is **deleted** (removing a constraint cannot make code non-compliant).
+- A MUST is **downgraded** to SHOULD (relaxing a constraint cannot create violations).
+- A rule is **reworded** without changing its normative direction or strength.
+
+If any warnings are triggered, include them in the Step 8 summary using this format:
+
+```text
+Breaking constitution change(s) detected — existing code may no longer comply:
+
+- [New/Changed rule text] (was: [old rule text or "N/A — newly added"])
+
+Existing code that was written under the prior constitution may now violate these rules.
+To bring existing code into compliance, create a new spec via /spec-specify to drive the
+necessary changes — do NOT modify existing spec documents directly.
+```
+
+### Step 8 - Summarize
+
+- Report which files were updated (constitution + which templates).
+- List principles that were added, modified, or removed.
+- Include breaking-change warnings from Step 7 (if any).
+- For each template not updated, note the reason (e.g., no applicable principles for that stage).
+- Report any placeholders that could not be resolved automatically and require manual follow-up.

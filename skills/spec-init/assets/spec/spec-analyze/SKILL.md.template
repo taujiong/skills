@@ -1,0 +1,217 @@
+---
+name: spec-analyze
+description: Guide to perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md. Can run at any stage after spec.md exists — not only after all three artifacts are complete. Use when users want to validate the coherence and completeness of their specifications before implementation. Also triggers when analyze spec, validate spec, or review spec are mentioned in the prompt.
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+## Constraints
+
+- **STRICTLY READ-ONLY**: Do **NOT** modify any files. Output a structured analysis report only. Offer an optional remediation plan (the user MUST explicitly approve before any follow-up editing commands are invoked manually).
+
+- **Constitution Authority**: The project constitution (`specs/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks — not dilution, reinterpretation, or silent ignoring of the principle. These adjustments are surfaced as read-only recommendations in the report; spec-analyze never applies them directly. If a principle itself needs to change, that MUST occur in a separate, explicit constitution update outside `/spec-analyze`.
+
+## Execution Flow
+
+### Step 0 - Pre-flight Checks
+
+Run all checks below in order. If any check fails, report the corresponding error and abort immediately.
+
+1. **Spec name provided**: If the input is empty and no spec name can be inferred from the conversation context, abort:
+
+   ```text
+   Error: I do not know which specification to analyze. You can point it out like this:
+
+   - analyze the add-user-auth specification
+   - /spec-analyze add-user-auth
+   ```
+
+2. **Spec file exists**: If `specs/<spec-name>/spec.md` does not exist or is empty, abort:
+
+   ```text
+   Error: No specification found at specs/<spec-name>/spec.md.
+   Run /spec-specify <spec-name> first to create the specification.
+   ```
+
+For the remaining artifacts, record their availability for use in subsequent steps — they are optional and do not block execution:
+
+- `specs/constitution.md` — if absent, Constitution Alignment checks are skipped
+- `specs/<spec-name>/plan.md` — if absent, architecture/consistency checks against plan are skipped
+- `specs/<spec-name>/tasks.md` — if absent, coverage gap checks are skipped
+
+Carry this availability map through the rest of the flow. At the end of the report (Step 5), include a note listing any skipped check categories due to missing files.
+
+> **NOTE**: spec-analyze can run at any stage after spec.md exists — not only after all three artifacts are complete. Running it early (e.g., with only spec.md and plan.md) provides partial analysis and is encouraged to catch issues before investing in task generation.
+
+### Step 1 - Load Context
+
+Load only the minimal necessary context from each artifact:
+
+- spec.md
+   - Functional requirements
+   - Non-functional requirements
+   - User stories
+   - Edge cases (if present)
+- plan.md
+   - Architecture/stack choices
+   - Data model references
+   - Phases
+   - Technical constraints
+- tasks.md
+   - Task IDs
+   - Descriptions
+   - Phase grouping
+   - Referenced file paths
+- constitution.md
+   - Core principles
+
+### Step 2 - Build Semantic Models
+
+Create internal representations (do not include raw artifacts in output). Only build the sub-models for which source data is available (based on the availability map from Step 0) — if tasks.md is absent, skip "Task coverage mapping"; if constitution.md is absent, skip "Constitution rule set":
+
+- **Requirements inventory**: Each functional + non-functional requirement with a stable key. Derive the slug from the core action phrase, stripping leading modal verbs and subjects (`System MUST`, `User can`, `The app shall`, etc.). Examples: `"System MUST allow users to upload files"` → `upload-files`; `"User can reset password"` → `reset-password`. Use the shortest unambiguous imperative that identifies the requirement.
+- **User story/action inventory**: Discrete user actions with acceptance criteria.
+- **Task coverage mapping**: Map each task to one or more requirements or stories. Use this priority order:
+   1. **Direct Story label match** (preferred): Tasks annotated with `[US1]`, `[US2]`, etc. in tasks.md map directly to the corresponding user story — use these as the primary mapping source. If a task carries multiple story labels (e.g., `[US1][US2]`), attribute it to all referenced stories.
+   2. **Explicit reference patterns**: Tasks that reference a requirement ID or key phrase.
+   3. **Keyword inference** (fallback only): Use when neither of the above applies.
+- **Constitution rule set**: Extract principle names and MUST/SHOULD normative statements.
+
+### Step 3 - Detect Problems
+
+Focus on high-signal findings. Limit to 50 findings total; if more are found, include an **Overflow Summary** section after the findings table listing the remaining issues grouped by category (one line each: category, count, brief pattern description).
+
+#### Duplication Detection
+
+- Identify near-duplicate requirements.
+- Mark lower-quality phrasing for consolidation.
+
+#### Ambiguity Detection
+
+- Flag qualitative adjectives without measurable criteria — this includes but is not limited to: fast, scalable, secure, intuitive, robust, reliable, flexible, efficient, modern. The pattern to detect is: any adjective describing quality that lacks a numeric target or explicit bound.
+- Flag unresolved placeholders (TODO, TKTK, ???, `<placeholder>`, `NEEDS CLARIFICATION`, etc.).
+
+#### Underspecification
+
+- Requirements with verbs but missing object or measurable outcome.
+- User stories missing acceptance criteria alignment.
+- Tasks referencing files or components not defined in spec/plan (tasks annotated with `<!-- N/A: ... -->` are exempt from this check).
+
+#### Constitution Alignment
+
+- Any requirement or plan element conflicting with a MUST principle.
+- Missing mandated sections or quality gates from constitution.
+
+#### Coverage Gaps
+
+- Requirements with zero associated tasks.
+- Tasks with no mapped requirement/story.
+- Non-functional requirements not reflected in tasks (e.g., performance, security).
+- Tasks annotated with `<!-- N/A: ... -->` are treated as intentionally handled (not missing coverage) — do not report them as gaps.
+
+#### Inconsistency
+
+- Terminology drift (same concept named differently across files).
+- Data entities referenced in plan but absent in spec (or vice versa).
+- Task ordering contradictions (e.g., integration tasks before foundational setup tasks without a preceding dependency task or explanatory comment).
+- Conflicting requirements (e.g., one requires Next.js while another specifies Vue).
+
+### Step 4 - Assign Severity
+
+Use this heuristic to prioritize findings:
+
+- **CRITICAL**: Violates constitution MUST, a required section inside spec.md is absent or empty, or a functional requirement has zero task coverage and blocks baseline functionality.
+- **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute, untestable acceptance criterion.
+- **MEDIUM**: Terminology drift, missing non-functional task coverage, underspecified edge case.
+- **LOW**: Style/wording improvements, minor redundancy not affecting execution order.
+
+### Step 5 - Summarize
+
+Output a Markdown report (no file writes) with the following structure.
+
+**Specification Analysis Report:**
+
+| ID  | Category    | Severity | Location(s)           | Summary                                   | Recommendation                       |
+| --- | ----------- | -------- | --------------------- | ----------------------------------------- | ------------------------------------ |
+| 1   | Duplication | HIGH     | spec.md:L120-134      | Two similar requirements ...              | Merge phrasing; keep clearer version |
+| 2   | Coverage    | CRITICAL | tasks.md:[T012]       | Requirement 'reset-password' has no tasks | Add task for this requirement        |
+| 3   | Ambiguity   | MEDIUM   | plan.md:§Core Changes | "scalable architecture" lacks metric      | Define throughput target             |
+
+Location format:
+
+- Line-addressable content (spec.md): use `filename:L<start>-<end>` (e.g., `spec.md:L45-52`)
+- Task references: use `tasks.md:[T012]` or `tasks.md:[US2]`
+- Section-based content (plan.md sections, spec.md headings): use `filename:§<Section Name>` (e.g., `plan.md:§Core Changes`)
+
+(Add one row per finding; use sequential integers as IDs.)
+
+**Coverage Summary Table:**
+
+| Requirement Key | Has Task? | Task IDs | Notes |
+| --------------- | --------- | -------- | ----- |
+
+**Constitution Alignment Issues:** (if any)
+
+**Unmapped Tasks:** (if any)
+
+**Metrics:**
+
+- Total Requirements (Functional / Non-Functional)
+- Total Tasks (excluding `<!-- N/A: ... -->` annotated tasks)
+- Functional Requirements Coverage % — requirements with >=1 mapped task / total functional requirements; mapping determined by Step 2 Task Coverage Mapping results (not keyword scan)
+- Non-Functional Requirements Coverage % — same method applied to NFRs
+- Ambiguity Count
+- Duplication Count
+- Critical Issues Count
+- Skipped Check Categories (due to missing files, if any — list each category name and the file that would enable it)
+
+#### Next Actions
+
+At the end of the report, output a concise Next Actions block. Map each recommended action to the appropriate skill command based on where the problem originates:
+
+| Problem Source                                  | Recommended Command                                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Ambiguous or incomplete requirements in spec.md | `/spec-clarify <spec-name>`                                                                              |
+| spec.md needs substantial rework                | `/spec-specify <spec-name>` (prompts before overwriting — will not silently replace existing spec)       |
+| Architecture conflicts or plan needs updating   | `/spec-plan <spec-name>` (runs in update mode)                                                           |
+| Tasks missing coverage or format issues         | `/spec-tasks <spec-name>`                                                                                |
+| Constitution violations                         | `/spec-constitution` (amend constitution separately first)                                               |
+
+- If CRITICAL issues exist: recommend resolving them before `/spec-implement`.
+- If only LOW/MEDIUM issues: the user may proceed, but provide improvement suggestions with the relevant command per issue source.
+
+#### Optional Remediation
+
+Ask the user: "Would you like me to suggest concrete remediation edits for the top 3 CRITICAL/HIGH issues?"
+
+If the user agrees, for each issue output a suggestion block in this format:
+
+```
+**Issue [ID]** — <file path>, <location: line range e.g. L45-52, task ID e.g. [T012], or section e.g. §Core Changes>
+Suggested change:
+<the specific text to add, replace, or remove — quoted directly from or relative to the existing content>
+Rationale: <one sentence explaining why this resolves the issue>
+```
+
+These are read-only suggestions. Do NOT apply them automatically. The user SHOULD apply them manually or run the appropriate skill command listed in the Next Actions block.
+
+## Guidelines
+
+### Context Efficiency
+
+- **Minimal high-signal tokens**: Focus on actionable findings, not exhaustive documentation.
+- **Progressive disclosure**: Load artifacts incrementally; do not dump all content into analysis.
+- **Token-efficient output**: Limit findings table to 50 rows; summarize overflow.
+- **Deterministic results**: Rerunning without changes SHOULD produce consistent IDs and counts.
+
+### Analysis Guidelines
+
+- **NEVER modify files** (this is read-only analysis).
+- **NEVER hallucinate missing sections** (if absent, report them accurately).
+- **Prioritize constitution violations** (these are always CRITICAL).
+- **Use examples over exhaustive rules** (cite specific instances, not generic patterns).
+- **Report zero issues gracefully** (emit success report with coverage statistics).

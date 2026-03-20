@@ -1,0 +1,244 @@
+---
+name: spec-tasks
+description: Guide to generate an actionable, dependency-ordered tasks.md for the specification based on available design artifacts. Use when users want to break down a spec or plan into specific implementation tasks, or derive a task list from the design artifacts. Also triggers when users mention task generation, implementation checklist, or breaking a spec into tasks.
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+## Execution Flow
+
+### Step 0 - Pre-flight Checks
+
+Run all checks below in order. If any check fails, report the corresponding error and abort immediately.
+
+1. **Spec name provided**: If the input is empty and no spec name can be inferred from the conversation context, abort:
+
+   ```text
+   Error: I do not know which specification to generate tasks for. You can point it out like this:
+
+   - create tasks for the add-user-auth specification
+   - /spec-tasks add-user-auth
+   ```
+
+2. **Spec file exists**: If `specs/<spec-name>/spec.md` does not exist or is empty, abort:
+
+   ```text
+   Error: No specification found at specs/<spec-name>/spec.md.
+   Run /spec-specify <spec-name> first to create the specification.
+   ```
+
+3. **Plan file exists**: If `specs/<spec-name>/plan.md` does not exist or is empty, abort:
+
+   ```text
+   Error: No implementation plan found at specs/<spec-name>/plan.md.
+   Run /spec-plan <spec-name> first to create the plan.
+   ```
+
+4. **No unresolved plan decisions**: Scan `specs/<spec-name>/plan.md` for the literal strings `NEEDS CLARIFICATION`, `TODO`, and `TBD`. If any are found, abort:
+
+   ```text
+   Error: The implementation plan at specs/<spec-name>/plan.md contains unresolved decisions
+   marked as NEEDS CLARIFICATION, TODO, or TBD.
+
+   Options to resolve:
+     1. Edit specs/<spec-name>/plan.md directly to fill in the missing decisions
+     2. Re-run /spec-plan <spec-name> (if the spec has been updated with the missing information)
+     3. Re-run /spec-clarify <spec-name> or /spec-specify <spec-name> first
+        (if the underlying spec lacks the required information)
+
+   After resolving, re-run /spec-tasks <spec-name>.
+   ```
+
+5. **Existing tasks file**: If `specs/<spec-name>/tasks.md` already exists, scan it for any tasks marked as completed (`- [x]`). Then ask the user for a decision:
+
+   ```text
+   Found existing specs/<spec-name>/tasks.md [with N completed task(s) / with no completed tasks].
+
+   Options:
+     A - Update: merge changes from spec/plan into existing tasks (preserves completed tasks and manual annotations)
+     B - Overwrite: regenerate from scratch (all existing content will be replaced)
+     C - Abort
+   ```
+
+   Wait for the user's decision before proceeding:
+   - **Option A (Update)**: Enter **update mode** — carry the existing tasks.md content into Step 1 for merge processing.
+   - **Option B (Overwrite)**: Enter **create mode** — proceed as if no tasks.md exists.
+   - **Option C**: Abort.
+
+   If `tasks.md` does not exist, enter **create mode** without prompting.
+
+6. **Resource convention file**: Check whether `specs/inbox/README.md` exists. Record the result as `has_resource_convention` for use in Step 1. This does NOT block execution — if the file is missing, external resource loading is skipped silently.
+
+### Step 1 - Load Context
+
+- Load `specs/<spec-name>/spec.md` and extract user stories with their priorities (P1, P2, P3, etc.).
+- Load `specs/<spec-name>/plan.md` and extract tech stack, libraries, file modifications, and data model changes.
+- Record the full list of files from the File Modifications section of `plan.md` in memory — this is used for path validation in Step 3. If the File Modifications section is empty or contains `NEEDS CLARIFICATION`, record an empty list and skip path validation in Step 3 (report a WARNING instead).
+- If `has_resource_convention` is true (from Step 0), scan `specs/<spec-name>/refs/` for external resources relevant to the `tasks` stage:
+   1. Read the Resource Type Convention table in `specs/inbox/README.md`.
+   2. Identify rows where the `Consumed By` column includes `tasks`.
+   3. Collect the `Suffix Pattern` from each matching row.
+   4. Glob `specs/<spec-name>/refs/` with the collected patterns.
+   5. Load the content of all matched files into working memory. Use loaded resources as supplementary context when generating implementation tasks. Where resources contain structured information (e.g., API endpoints, data schemas), derive concrete task descriptions from them.
+
+   If `has_resource_convention` is false or `specs/<spec-name>/refs/` does not exist, skip external resource loading silently.
+- **Update mode only**: Load the existing `specs/<spec-name>/tasks.md` into memory. For each phase/user story section, record:
+   - Phase heading and user story identifier (if any)
+   - All tasks with their IDs, completion status (`[x]` or `[ ]`), and any manual annotations
+   - This snapshot is used in Step 2 for merge processing.
+
+### Step 2 - Draft Tasks from Template
+
+**Create mode**: Read [tasks-template.md](assets/tasks-template.md) as the base structure for the tasks, then generate all phases from scratch.
+
+**Update mode**: Perform a **phase-level merge** instead of a full regeneration. For each phase, compare the existing content against what the current spec and plan would produce:
+
+- **Unchanged user story** (story exists in both old spec and current spec with no material changes to acceptance criteria or requirements): preserve the existing phase as-is, including completion status and manual annotations.
+- **Changed user story** (story exists but acceptance criteria, requirements, or file modifications have changed): re-derive the tasks for that phase. For tasks that map to unchanged requirements within the story, preserve their completion status. For new or changed requirements, generate new tasks with `[ ]` status. Report re-derived phases in Step 4.
+- **New user story** (story exists in current spec but not in existing tasks): generate a new phase with all tasks in `[ ]` status. Insert it in priority order among existing phases.
+- **Removed user story** (story exists in existing tasks but not in current spec): remove the phase entirely. If it contained completed tasks, report as a WARNING in Step 4: `WARNING: Removed phase "[phase name]" which had N completed task(s).`
+- **Setup / Foundational / Cross-Cutting phases**: Re-derive from the current plan. Preserve completion status for tasks whose descriptions match an existing task — a match requires the same file path or scope AND the same action verb (e.g., "Create", "Add", "Implement"); minor wording differences are acceptable if both criteria hold. Generate new tasks for any new requirements.
+- After merge, re-number all Task IDs sequentially (T001, T002, ...) to maintain consistent ordering. Update any cross-references.
+
+For both modes, follow these rules when generating task content:
+
+1. Generate Setup phase tasks (e.g., project initialization, shared infrastructure setup).
+   - **OPTIONAL**: Skip this phase if `plan.md` contains no new project setup work (e.g., no new dependency files, no new directory structure to create).
+
+2. Generate Foundational phase tasks (e.g., core infrastructure that blocks all user stories).
+   - **OPTIONAL**: Skip this phase if `plan.md` contains no cross-story dependencies or shared models that MUST exist before any user story can begin.
+   - **CRITICAL**: No user story tasks can be added until all foundational tasks are defined.
+
+3. For each user story, starting with the highest priority (P1), then P2, etc. — follow the organization and phase structure defined in Task Generation Rules below:
+   - Fill story goal, independent test criteria, tests, implementation tasks.
+   - **Tests**: Generate test tasks by default. Skip test tasks only if the user's original input explicitly states "no tests" or equivalent.
+   - **Zero user stories** (e.g., pure infrastructure refactor): If the spec contains no user stories but has behavior-preservation scenarios or refactor work items, treat each scenario as an equivalent "story phase" for task organization purposes. If the spec truly has no actionable scenarios, report a WARNING and generate only Setup, Foundational, and Cross-Cutting Concerns phases.
+
+4. Generate final phase: Cross-Cutting Concerns (e.g., documentation, performance optimization, security hardening).
+   - Read the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker block in the template.
+   - If the block is empty, retain the section heading but add a comment: `<!-- No constitution checks defined — skipping -->` and do not add placeholder tasks.
+   - If the block contains verification tasks, include ALL of them — do not silently drop any. For each task, assess its relevance to the current spec/plan context:
+      - **Relevant**: Include as a normal task with a concrete file path or scope derived from the current spec/plan where possible (e.g., "Run security scan on `src/api/`" rather than "Run security scan").
+      - **Not applicable**: Include the task but annotate it with `<!-- N/A: <brief reason, e.g. no database in this spec> -->` so the omission is visible and auditable rather than silent. Use these signals to judge applicability: absence of a database component, no external API, no user authentication in the spec/plan.
+   - Cross-cutting concern tasks continue the sequential Task ID numbering from the last user story task.
+
+5. Fill the "Dependencies & Execution Order" section from the template based on the actual phases and user stories generated above.
+
+### Step 3 - Validate
+
+Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
+
+- [ ] Each user story has all needed tasks and is independently testable
+- [ ] All tasks strictly follow the checklist format defined in Task Generation Rules (checkbox, Task ID, Story label where required, file path or scope)
+- [ ] Task ordering respects dependencies: foundational tasks before user stories, user stories in priority order, test Task IDs lower than implementation Task IDs within each story
+- [ ] Every file path referenced in a task appears in the File Modifications list from `plan.md` (skip this check if the list is empty; placeholder tokens like `[entity]` in paths count as unfilled templates and MUST be replaced with real paths before this check passes; cross-cutting tasks that span multiple files may use a scope description like `across src/api/` instead of a single path)
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Cross-Cutting Concerns section; every verification task present in the tasks-template.md asset's marker block is accounted for in the output — either as a concrete task (with spec/plan-specific file paths or scopes) or annotated with `<!-- N/A: ... -->` (none silently dropped); an empty block is acceptable if the template markers contain no content
+
+If any item still fails after 3 iterations, flag it as a WARNING, note the discrepancy, and ask the user to provide the missing information before writing the file.
+
+### Step 4 - Write
+
+Before writing, strip all `<!-- ... -->` HTML comment blocks from the generated content **except**:
+
+- `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers and their boilerplate lines (always preserve)
+- `<!-- N/A: ... -->` annotations on cross-cutting tasks (always preserve)
+
+After all validations pass and cleanup is done, overwrite `specs/<spec-name>/tasks.md` with the completed content.
+
+### Step 5 - Summarize
+
+- Report the generation mode: Create / Update.
+- Report the total task count (and count of preserved completed tasks, if update mode).
+- Report the task count per user story.
+- List independent test criteria for each story.
+- Suggest the MVP scope (typically User Story 1).
+- If update mode: list phases that were re-derived, added, or removed.
+- If any WARNINGs were raised during validation, list them here so the user can review and correct.
+
+**IMPORTANT**: The tasks.md MUST be immediately executable — each task MUST be specific enough that an LLM can complete it without additional context.
+
+**Next step**: Run `/spec-analyze <spec-name>` to validate consistency across all spec artifacts, or `/spec-implement <spec-name>` to begin implementation.
+
+## Task Generation Rules
+
+**CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
+
+### Task Granularity
+
+Each task SHOULD represent an **atomic, independently verifiable unit of work**. Use these criteria to judge whether a task needs splitting:
+
+- **Dependency boundary**: If a task can be split into two parts that have no dependency on each other, it SHOULD be split.
+- **Testability boundary**: If a task's result cannot be verified with a focused test (unit, integration, or manual), the granularity is too coarse — split it until each part is independently testable.
+
+### Checklist Format (REQUIRED)
+
+Every task MUST strictly follow this format:
+
+```markdown
+- [ ] [TaskID] [Story?] Description with file path or scope
+```
+
+**Format Components**:
+
+- **Checkbox**: ALWAYS start with `- [ ]` (markdown checkbox)
+- **Task ID**: Sequential number (T001, T002, T003...) in execution order across the entire file
+- **[Story] label**: REQUIRED for user story phase tasks only
+   - Format: [US1], [US2], [US3], etc. (maps to user stories from spec.md)
+   - Setup phase: NO story label
+   - Foundational phase: NO story label
+   - User Story phases: MUST have story label
+   - Cross-Cutting Concerns phase: NO story label
+- **Description**: Clear action with an exact file path. For tasks that inherently span multiple files (e.g., adding validation across an entire layer), a scope description (e.g., `across src/api/`) is acceptable in place of a single path.
+
+**Examples**:
+
+- CORRECT: `- [ ] T001 Create project structure per implementation plan`
+- CORRECT: `- [ ] T005 Implement authentication middleware in src/middleware/auth.py`
+- CORRECT: `- [ ] T012 [US1] Create User model in src/models/user.py`
+- CORRECT: `- [ ] T014 [US1] Implement UserService in src/services/user_service.py`
+- CORRECT: `- [ ] T016 [US1] Add input validation across src/api/`
+- WRONG: `- [ ] Create User model` (missing Task ID and Story label)
+- WRONG: `T001 [US1] Create model` (missing checkbox)
+- WRONG: `- [ ] [US1] Create User model` (missing Task ID)
+- WRONG: `- [ ] T001 [US1] Create model` (missing file path or scope)
+
+### Task Organization
+
+- **From User Stories (spec.md)** — PRIMARY ORGANIZATION:
+   - Each user story (P1, P2, P3...) gets its own phase.
+   - Map all related components to their story:
+      - Models needed for that story
+      - Services needed for that story
+      - Endpoints/UI needed for that story
+      - If tests are included: tests specific to that story
+   - Mark story dependencies (most stories SHOULD be independent).
+
+- **From Data Model**:
+   - Map each entity to the user story(ies) that need it.
+   - If an entity serves multiple stories: place it in the earliest story or Setup phase.
+   - Relationships → service layer tasks in appropriate story phase.
+
+- **From Setup/Infrastructure**:
+   - Shared infrastructure → Setup phase (Phase 1)
+   - Foundational/blocking tasks → Foundational phase (Phase 2)
+   - Story-specific setup → within that story's phase
+
+### Phase Structure
+
+Phases use **semantic names** as their primary heading, not sequential numbers. This avoids confusion when optional phases (Setup, Foundational) are skipped.
+
+- **`## Setup`** (if needed): project initialization — skip if plan.md contains no setup work
+- **`## Foundational`** (if needed): blocking prerequisites — MUST complete before user stories
+- **`## US[N]: [Title] (Priority: P[N])`**: one phase per user story, in priority order (P1, P2, P3...)
+   - Within each story: Tests (if included) → Models → Services → Endpoints → Integration
+   - Test tasks MUST have lower Task IDs than their corresponding implementation tasks
+   - Each phase SHOULD be a complete, independently testable increment
+   - The first user story phase SHOULD include a `MVP` marker
+- **`## Cross-Cutting Concerns`**: always the final phase
+   - Task IDs continue sequentially from the last user story task
+
+The Dependencies & Execution Order section SHOULD reference phases by their semantic names (e.g., "Setup", "Foundational", "US1", "US2") rather than numeric phase IDs.

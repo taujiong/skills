@@ -1,0 +1,324 @@
+---
+name: spec-specify
+description: Guide to create or update a specification about feature request, bug fix, or refactor. Use when users want to define clear requirements and acceptance criteria. Also triggers when user story, feature request are mentioned in the prompt.
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+Provide a description of what you want to build, fix, or refactor, and why. If the input is empty, attempt to infer the specification detail from the conversation context. If still unclear, report the following error and abort.
+
+```text
+Error: No valid input provided. Please explain what you want to build and why. For example:
+
+- I want to build a todo app to manage tasks efficiently
+- /spec-specify create a backend server that helps me manage tasks
+```
+
+## Execution Flow
+
+### Step 1 - Generate Spec Name
+
+Create a timestamped short name for the specification:
+
+1. Determine the current date and hour (24-hour format, zero-padded). Format: `YYYY-MM-DD-HH`.
+2. Analyze the description and extract the most meaningful keywords.
+3. Create a 2-4 word short name that captures the essence of the specification.
+4. Combine as: `<timestamp>-<short-name>`.
+
+Naming rules for the short name portion:
+
+- Use action-noun format when possible (e.g., "add-user-auth", "fix-payment-bug").
+- Preserve technical terms and acronyms (OAuth2, API, JWT, etc.).
+- Keep it concise but descriptive enough to identify the specification at a glance.
+
+Examples (assuming current time is 2026-03-20 11:xx):
+
+- "I want to add user authentication" → `2026-03-20-11-add-user-auth`
+- "Implement OAuth2 integration for the API" → `2026-03-20-11-support-oauth2-integration`
+- "Create a dashboard for analytics" → `2026-03-20-11-add-analytics-dashboard`
+- "Fix payment processing timeout bug" → `2026-03-20-11-fix-payment-timeout`
+
+After generating the name, check whether `specs/<spec-name>/spec.md` already exists:
+
+- If it does **not** exist: proceed to Step 2.
+- If it **exists**: report the following and ask the user for a decision:
+
+```text
+A spec named '<spec-name>' already exists at specs/<spec-name>/spec.md.
+
+Recommendation: Use a more specific name to distinguish this spec (e.g., add context
+like '2026-03-20-11-add-user-auth-sso' or '2026-03-20-11-fix-payment-timeout-checkout').
+
+Options:
+  A - Provide a new name
+  B - Overwrite the existing spec
+  C - Merge: use the existing spec as a base and update it with the new description
+  D - Abort
+```
+
+Wait for the user's decision before proceeding. If the user provides a new name (Option A), repeat the existence check for `specs/<new-name>/spec.md`. If the new name also exists, repeat the collision prompt.
+
+If the user chooses Option C (Merge): load the existing spec into memory, then proceed through Steps 3-7 as normal but treat the existing spec content as additional context. Apply the following merge rules:
+
+- **Section-level merge**: For each section, compare the existing content against what the new description would produce:
+   - If the new description **changes** the scope or requirements for that section: re-derive the section, using the existing content as reference context.
+   - If the new description does **not affect** that section: preserve the existing section as-is.
+- **Preserve stable content**: Retain existing clarification sessions (`## Clarifications` / `### Session <N>`), resolved questions, and manually edited sections that remain valid under the new description.
+- **Conflict resolution**: When the new description contradicts existing content (e.g., a clarification answer, a requirement, or an edge case):
+   - The new description takes precedence — update the conflicting content to align with the new description.
+   - Record each conflict as a WARNING in Step 7, using this format: `WARNING: [section] — replaced "[old content]" with "[new content]" (new description takes precedence)`.
+   - If a clarification answer from a prior session is superseded, do NOT delete the session entry — instead append `(superseded by merge — see updated [section name])` to the answer line.
+- **User-added content**: Preserve manually added content that does not originate from any template section, unless it contradicts the new description. If removed due to contradiction, report it as a WARNING.
+
+### Step 2 - Discover External Resources
+
+After the spec directory is created (or confirmed via collision handling in Step 1), scan the external resource inbox at `specs/inbox/` for resource files.
+
+1. Check whether `specs/inbox/README.md` exists. If it exists, read the Resource Type Convention table and collect all `Suffix Pattern` values and their corresponding `Type` names. If it does not exist, record an empty convention table — all files will be classified as `unknown` and none will be loaded into working memory.
+2. List all files in `specs/inbox/` excluding `README.md` and the `assets/` subdirectory.
+3. If no files are found, skip this step silently (no output).
+4. If files are found:
+   a. Create `specs/<spec-name>/refs/` directory.
+   b. For each file, match its name against the collected suffix patterns (if any):
+      - Matched → classify using the corresponding `Type` name from the table.
+      - Not matched (or convention table is empty) → classify as `unknown`.
+   c. **Move** (not copy) all files from `specs/inbox/` into `specs/<spec-name>/refs/`. The `README.md` file MUST NOT be moved — it stays in `specs/inbox/`. If an `assets/` subdirectory exists in `specs/inbox/`, move it entirely into `specs/<spec-name>/refs/assets/` to preserve references from the `.md` files.
+   d. From the Resource Type Convention table (if available), identify rows where the `Consumed By` column includes `specify`. Load the content of all resources whose type matches these rows into working memory for use in subsequent steps (Scope Clarify, Draft).
+   e. Report the discovered resources:
+
+      ```text
+      External resources discovered and archived to specs/<spec-name>/refs/:
+        - <filename> (<type>) — loaded into context
+        - <filename> (<type>) — archived but not loaded (not consumed by specify)
+        - <filename> (unknown) — archived but not loaded
+
+      specs/inbox/ cleaned.
+      ```
+
+Resources loaded in this step serve as additional requirements sources alongside the user's description. Treat their content as supplementary context — map resource content to the most appropriate spec sections based on the resource's nature (e.g., business requirements map to User Stories and Functional Requirements; UI flows map to Acceptance Scenarios and Edge Cases).
+
+### Step 3 - Scope Clarify
+
+Before writing the spec file, resolve scope-critical ambiguities that would structurally change the draft. Analyze the user's description and evaluate whether ambiguities exist in the following three dimensions:
+
+- **Scope boundaries**: The inclusion/exclusion boundary of the feature is unclear.
+- **User roles / permissions**: Multiple actor types may exist but are not distinguished.
+- **Core business rules**: Multiple valid interpretations exist with different structural implications.
+
+Generate at most 3 clarification questions, following these constraints:
+
+- Each question MUST be answerable with EITHER:
+   - A short multiple-choice selection (2-5 distinct, mutually exclusive options), OR
+   - A one-word / short-phrase answer (explicitly constrain: "Answer in <=10 words").
+- Only include questions whose answers would materially impact the structure of the spec (e.g., number of user stories, scope sections, requirement categories).
+- Exclude questions that have reasonable defaults (see list below).
+
+**Reasonable defaults** (do not ask about these):
+
+- Data retention: Industry-standard practices for the domain
+- Performance targets: Standard web/mobile app expectations unless specified
+- Error handling: User-friendly messages with appropriate fallbacks
+- Authentication method: Standard session-based or OAuth2 for web apps
+- Integration patterns: RESTful APIs unless specified otherwise
+
+**If no scope-critical ambiguities exist, skip directly to Step 4.**
+
+For each question:
+
+- **Multiple-choice**: Analyze all options and recommend the most suitable one based on best practices and project context. Format as: `**Recommended:** Option [X] - <reasoning>`. Render all options as a Markdown table with a `Skip` row.
+- **Short-answer**: Provide a suggested answer with brief reasoning. Format as: `**Suggested:** <answer> - <reasoning>`. The user can accept by saying "yes" or provide their own answer.
+
+After the user answers, validate the response. If ambiguous, ask for a quick disambiguation (does not count toward the question limit). Record all Q&A pairs in memory for use in Step 4. Do NOT write any file in this step.
+
+### Step 4 - Draft Specification from Template
+
+> **Writing guidelines**: Focus on **WHAT** users need and **WHY**. Do not specify implementation mechanisms (HTTP methods, data schemas, code patterns, storage engines, internal architecture). Do name external systems this feature MUST interact with — system-level integration points are requirements, not implementation details. Write for business stakeholders, not developers.
+>
+> **For AI generation**:
+>
+> - **Make informed guesses**: Use context, industry standards, and common patterns to fill gaps.
+> - **Document assumptions**: Record reasonable defaults in the Assumptions section.
+> - **Prioritize clarifications**: scope > security/privacy > user experience > technical details.
+> - **Think like a tester**: Every vague requirement SHOULD fail the "testable and unambiguous" checklist item.
+
+1. Read [spec-template.md](assets/spec-template.md) as the base structure for the specification.
+2. Integrate external resources (if loaded in Step 2):
+   - Treat loaded resources as additional requirements sources. Map resource content to the most appropriate spec sections based on the resource's nature (e.g., business requirements → User Stories and Functional Requirements; UI interaction flows → Acceptance Scenarios; UI states → Edge Cases; business goals → Success Criteria).
+   - If the user's description and an external resource conflict, the user's description takes precedence. Record the conflict in the Assumptions section.
+3. Create user scenarios & testing:
+   - For **feature** specs: if no clear user flow can be determined, abort with `Error: Cannot determine user scenarios — please describe the primary user action this feature enables.`
+   - For **bug fix** specs: describe the affected behavior (what the user experiences before and after the fix) instead of a user journey. At least one reproduction scenario is required.
+   - For **refactor** specs: describe what behavior MUST remain unchanged for existing users. User-facing scenarios focus on verifying behavior preservation.
+   - Split into as small pieces as possible, each with clear acceptance criteria.
+   - Example: CRUD todos → create todo, read todo, update todo, delete todo, each with its own scenario and criteria.
+4. Generate requirements:
+   - Each requirement MUST be testable.
+   - Do not use vague terms like "fast", "intuitive", "secure" without measurable criteria.
+   - Example: "System MUST allow users to create accounts" is acceptable; "System MUST be fast" is not, unless "fast" is defined with a measurable target.
+5. Define success criteria:
+
+   > Success criteria MUST be **measurable** (specific metrics), **technology-agnostic** (no frameworks/tools), **user-focused** (outcomes from user/business perspective), and **verifiable** without implementation details.
+   >
+   > Good: "Users can complete checkout in under 3 minutes", "95% of searches return results in under 1 second"
+   >
+   > Bad: "API response time is under 200ms" (too technical), "Redis cache hit rate above 80%" (technology-specific)
+
+   - Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion).
+
+6. Follow the template section order exactly. Do not reorder sections. Optional sections (Clarifications, Assumptions) that have no content MUST retain their heading with the body replaced by `<!-- No content yet -->`.
+7. Preserve all `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker blocks and their content exactly as they appear in the template. Do not modify, remove, or replace content between these markers — they are managed by `/spec-constitution`.
+
+**Do not write any files in this step.** Hold the complete specification content in memory — it is validated in Step 5 and written to disk in Step 6.
+
+### Step 5 - Validate
+
+Review the spec against the checklist below. Apply only the sections relevant to the spec type (Feature, Fix, or Refactor) as determined during drafting in Step 4.
+
+Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
+
+#### Universal (all spec types)
+
+- [ ] All mandatory sections completed with concrete content (no unfilled placeholders)
+- [ ] No unanswered questions or unresolved ambiguities remain
+- [ ] Requirements are testable and unambiguous (no vague terms without measurable criteria)
+- [ ] All acceptance scenarios defined with Given/When/Then format
+- [ ] Edge cases and failure scenarios identified with explicit handling strategies
+- [ ] Scope is clearly bounded with explicit In Scope and Out of Scope subsections
+- [ ] Success criteria are measurable and technology-agnostic
+- [ ] Assumptions are documented and clearly labeled (no hidden assumptions)
+- [ ] User stories are prioritized with explicit P1/P2/P3 labels and each covers a primary flow
+- [ ] Written for non-technical stakeholders (no unexplained jargon)
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches what is present in the spec-template.md asset and is preserved exactly as-is (managed by `/spec-constitution`); an empty block is acceptable if the markers contain no content
+
+#### Feature-only (type: Feature)
+
+- [ ] No implementation mechanisms anywhere in the spec (no HTTP methods, data schemas, code patterns, storage engines — external system names are allowed)
+- [ ] Non-functional requirements (performance, scalability, reliability) specified with metrics
+- [ ] Security and compliance requirements documented
+- [ ] Data privacy and protection requirements stated
+- [ ] Integration points with existing external systems identified (system names, not interfaces)
+- [ ] Rollback strategy considered if feature involves data migration or irreversible changes
+
+#### Bug fix-only (type: Fix)
+
+- [ ] Implementation details are limited to root cause analysis and reproduction conditions — no prescriptive fix approach
+- [ ] Root cause or reproduction condition clearly documented
+- [ ] Regression scenario defined (how to verify the bug does not recur)
+
+#### Refactor-only (type: Refactor)
+
+- [ ] Implementation details are limited to the target architecture or pattern and behavior preservation boundaries — no detailed code-level migration steps
+- [ ] Behavior preservation guarantee stated (what MUST NOT change externally)
+- [ ] Rollback strategy defined
+
+**If all items pass**: proceed to Step 6.
+
+**If items fail**:
+
+1. List the failing items with specific issues found.
+2. Self-correct: silently update the spec to address each issue.
+3. Re-run validation (max 3 iterations). Do not output intermediate results.
+4. If still failing after 3 iterations, categorize remaining failures:
+   - **BLOCKING**: Missing user scenarios, no acceptance criteria, unfilled mandatory sections. Cannot be skipped — the spec cannot proceed until these are resolved.
+   - **WARNING**: Incomplete NFR metrics, missing integration points. Can proceed with explicit acknowledgement.
+
+   If only WARNING items remain, ask the user:
+
+   ```text
+   The following non-critical issues could not be auto-resolved after 3 attempts:
+
+   WARNING:
+   - [item]: [specific issue found] — Recommendation: [concrete suggestion]
+
+   Options:
+     A - Provide the missing information now
+     B - Proceed and address warnings later
+     C - Abort
+   ```
+
+   If any BLOCKING items remain, ask the user to resolve them — do NOT offer an option to skip:
+
+   ```text
+   The following critical issues could not be auto-resolved after 3 attempts and MUST be
+   resolved before the spec can be completed:
+
+   BLOCKING:
+   - [item]: [specific issue found] — Recommendation: [concrete suggestion]
+
+   Please provide the missing information so these issues can be resolved.
+   If you wish to stop, say "abort".
+   ```
+
+   Continue prompting until all BLOCKING items are resolved or the user aborts.
+
+### Step 6 - Write
+
+Overwrite `specs/<spec-name>/spec.md` with the validated specification content:
+
+- Follow the template structure; preserve section order and headings.
+- Replace placeholders with concrete details derived from the feature description and clarifications from Step 3.
+
+### Step 7 - Summarize
+
+- Report the spec file path.
+- List edge cases and remind the user to review the defined handling strategies.
+- List assumptions made during spec creation and remind the user to confirm their reasonableness.
+- Display checklist summary in a table with pass/fail status and notes for any failed items.
+- **Downstream artifact staleness** (only when updating an existing spec — Merge or Overwrite mode from Step 1): Check whether `specs/<spec-name>/plan.md` and `specs/<spec-name>/tasks.md` exist. For each that exists, report a warning:
+
+   ```text
+   WARNING: specs/<spec-name>/plan.md already exists and may now be out of date.
+   Re-run /spec-plan <spec-name> to regenerate the plan from the updated spec.
+
+   WARNING: specs/<spec-name>/tasks.md already exists and may now be out of date.
+   Re-run /spec-tasks <spec-name> to regenerate tasks from the updated plan.
+   ```
+
+- Suggest the next step: run `/spec-plan <spec-name>` to create an implementation plan.
+- **Complexity-based clarification recommendation**: After producing the summary, evaluate the spec against the following complexity indicators:
+
+   1. 4 or more user stories
+   2. Any non-functional requirement lacks a measurable target (vague NFR — e.g., "high performance" without a number)
+   3. 2 or more external integration points (third-party services or APIs)
+   4. Security or compliance requirements beyond basic authentication
+
+   If **2 or more** indicators are present, append a recommendation block:
+
+   ```text
+   Recommendation: This specification has notable complexity ([list matched indicators]).
+   Consider running /spec-clarify <spec-name> to identify and resolve potential ambiguities
+   before proceeding to planning.
+   ```
+
+   If fewer than 2 indicators are present, do not output this block.
+
+**Example Output**:
+
+```markdown
+Spec created at: `specs/<spec-name>/spec.md` with **[N]** edge cases defined, **[M]** assumptions documented, and all checklists passed.
+
+**Edge Cases**:
+
+1. [Brief description of edge case 1]
+2. [Brief description of edge case 2]
+
+**Assumptions**:
+
+1. [Brief description of assumption 1]
+2. [Brief description of assumption 2]
+
+**Checklists**:
+
+| Checklist Item | Status  | Notes  |
+| -------------- | ------- | ------ |
+| Item1          | PASS    | Notes1 |
+| Item2          | WARN    | Notes2 |
+
+Please review the edge cases and assumptions to ensure they are reasonable and complete.
+
+**Next step**: Run `/spec-plan <spec-name>` to create an implementation plan.
+```

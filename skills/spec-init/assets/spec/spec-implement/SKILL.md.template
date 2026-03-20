@@ -1,0 +1,174 @@
+---
+name: spec-implement
+description: Guide to execute the implementation plan by processing and executing all tasks defined in tasks.md. Use when users want to implement a specification. Trigger whenever implementation or coding of a planned spec is the intent, even if the user does not explicitly say "implement" — including when they say "start coding", "let's build it", "begin development", or "execute the tasks".
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+The input accepts an optional scope filter to limit implementation to specific phases or stories:
+
+- `/spec-implement <spec-name>` — implement all tasks
+- `/spec-implement <spec-name> --story US1` — implement only User Story 1 (and its prerequisite Setup/Foundational phases if not yet completed)
+- `/spec-implement <spec-name> --story US1,US2` — implement User Stories 1 and 2
+- `/spec-implement <spec-name> --phase Setup` — implement only the Setup phase
+- `/spec-implement <spec-name> --phase Foundational,US1` — implement Foundational and US1 phases
+
+If no scope filter is provided, all tasks are executed.
+
+## Execution Flow
+
+### Step 0 - Pre-flight Checks
+
+Run all checks below in order. If any check fails, report the corresponding error and abort immediately.
+
+1. **Spec name provided**: If the input is empty and no spec name can be inferred from the conversation context, abort:
+
+   ```text
+   Error: I do not know which specification to implement. You can point it out like this:
+
+   - implement the add-user-auth specification
+   - /spec-implement add-user-auth
+   ```
+
+2. **Required files exist**: Verify the following files exist and are non-empty. If any are missing, abort with a specific error naming the missing file and the command to generate it:
+   - `specs/<spec-name>/spec.md` — missing: run `/spec-specify <spec-name>`
+   - `specs/<spec-name>/plan.md` — missing: run `/spec-plan <spec-name>`
+   - `specs/<spec-name>/tasks.md` — missing: run `/spec-tasks <spec-name>`
+
+3. **Scope filter validation** (if a scope filter is provided): Parse the `--story` or `--phase` argument and verify that all specified stories/phases exist in tasks.md. If any are not found, abort:
+
+   ```text
+   Error: The following stories/phases were not found in tasks.md: [list].
+   Available phases: [list of all phase headings from tasks.md].
+   ```
+
+4. **Resource convention file**: Check whether `specs/inbox/README.md` exists. Record the result as `has_resource_convention` for use in Step 1. This does NOT block execution — if the file is missing, external resource loading is skipped silently.
+
+5. **Git repository**: Check whether the current working directory is inside a git repository. Record the result as `is_git_repo` for use in Step 2 (Phase Checkpoints). This does NOT block execution — if not a git repository, phase checkpoint commits are skipped silently and a note is included in the final summary.
+
+6. **Uncommitted changes** (only if `is_git_repo` is true): Check whether the working tree has staged or unstaged changes. If uncommitted changes are detected, ask the user:
+
+   ```text
+   Warning: The working tree has uncommitted changes. Phase checkpoint commits
+   may include these unrelated changes, and reverting a checkpoint would also
+   discard them.
+
+   Options:
+     A - Continue anyway (uncommitted changes will be included in checkpoint commits)
+     B - Abort (commit or stash your changes first, then re-run)
+   ```
+
+   Wait for the user's decision. If the user chooses B, abort.
+
+### Step 1 - Load Context
+
+- Read `specs/constitution.md` for the core principles and standards that MUST be followed during implementation. If this file does not exist, skip constitution-related checks and note in the final summary that no constitution was defined.
+- Read `specs/<spec-name>/plan.md` for tech stack, architecture, file structure, and file dependencies.
+- Read `specs/<spec-name>/tasks.md` for the complete task list and execution plan.
+- If `has_resource_convention` is true (from Step 0), scan `specs/<spec-name>/refs/` for external resources relevant to the `implement` stage:
+   1. Read the Resource Type Convention table in `specs/inbox/README.md`.
+   2. Identify rows where the `Consumed By` column includes `implement`.
+   3. Collect the `Suffix Pattern` from each matching row.
+   4. Glob `specs/<spec-name>/refs/` with the collected patterns.
+   5. Load the content of all matched files into working memory. Use loaded resources as reference material during implementation. Where resources contain structured definitions (e.g., API schemas, field types), use exact names and structures from the resource rather than inferring them.
+
+   If `has_resource_convention` is false or `specs/<spec-name>/refs/` does not exist, skip external resource loading silently.
+
+- **Scope filtering**: If a scope filter is active, determine the effective task set:
+   - Include all tasks in the specified phases/stories.
+   - **Prerequisite inclusion**: If the specified scope includes any user story phase, automatically include Setup and Foundational phases if they contain incomplete tasks — these are prerequisites. Report this to the user:
+
+      ```text
+      Scope: [requested scope]. Including prerequisite phases: [Setup/Foundational] (contains incomplete tasks).
+      ```
+
+   - Exclude all tasks outside the effective scope. Tasks in excluded phases are not executed and not reported as incomplete.
+
+- **Resume scan**: After loading tasks.md (and applying scope filter if active), scan for tasks already marked as completed (`- [x]`) within the effective scope. If any are found, report to the user:
+
+   ```text
+   Found N completed task(s) [in scope]. Resuming from task TXxx.
+   ```
+
+   Skip all completed tasks and begin from the first incomplete task. Do not re-execute completed tasks unless the user explicitly requests a restart.
+
+**CRITICAL**: Do not proceed to implementation until all files above are fully loaded and understood.
+
+### Step 2 - Implement Tasks
+
+Execute implementation phase by phase within the effective scope, completing each phase before moving to the next. Within each phase, follow TDD order — execute test tasks before their corresponding implementation tasks (skip if tasks.md contains no test tasks). Tasks that affect the same files MUST run sequentially. Verify phase completion before proceeding to the next.
+
+Follow the phase order as defined in tasks.md. Phases use semantic names (Setup, Foundational, US1, US2, ..., Cross-Cutting Concerns) — execute them in the order they appear in tasks.md. If a scope filter is active, only execute phases within the effective scope.
+
+#### TDD Phase Awareness
+
+When tasks.md contains test tasks (tasks whose descriptions indicate test creation — e.g., starting with "Write test", "Add test", "Test", or explicitly labeled as test tasks), apply the following rules:
+
+- **RED phase** (test task executed before its corresponding implementation exists): Run the test and **verify it fails**. A failure here is the **expected and correct** outcome — do NOT trigger self-correction. Mark the test task as completed and proceed to the implementation tasks.
+- **GREEN phase** (all implementation tasks for a story are completed): Re-run the story's test suite and **verify all tests pass**. A failure here is unexpected — apply the self-correction rules below.
+
+If tasks.md does not contain any test tasks, skip TDD phase handling entirely.
+
+#### Progress Tracking and Error Handling
+
+- Report progress after each completed task and mark it as `[x]` in tasks.md immediately.
+- **Technical failures** (test failures in GREEN phase, build errors, lint errors): apply **escalating self-correction**:
+   - **Attempt 1 — Fix the immediate error**: Analyze the error message and apply a targeted fix to the specific file/line that caused the failure.
+   - **Attempt 2 — Review broader context**: Re-read the relevant section of plan.md (architecture, data model, dependencies) for the failing task. Check whether the failure stems from a misalignment between the implementation and the plan. Apply a context-informed fix.
+   - **Attempt 3 — Ask the user**: Present the error context, what was tried in attempts 1 and 2, and ask the user for guidance on how to proceed.
+   - If still unresolvable after the user's guidance, halt and report the specific error with full context.
+- **Judgment ambiguities** (task description conflicts with actual code, or a plan assumption does not hold in practice): do NOT halt — ask the user directly before proceeding.
+
+#### Phase Checkpoints
+
+If `is_git_repo` is true (from Step 0), create a git commit after completing each phase as a recoverable checkpoint. Use Conventional Commits format for commit messages:
+
+- Setup phase: `chore(<spec-name>): initialize project structure and dependencies`
+- Foundational phase: `feat(<spec-name>): add foundational infrastructure`
+- User Story phases: `feat(<spec-name>): implement <story title>`
+- Cross-Cutting Concerns: `chore(<spec-name>): complete cross-cutting concerns and quality gates`
+
+On unresolvable failure mid-phase, suggest reverting to the last phase checkpoint commit to restore a clean state.
+
+If `is_git_repo` is false, skip all checkpoint commits silently. On unresolvable failure mid-phase, note that no checkpoint is available for rollback and suggest the user manually review and revert the changes.
+
+### Step 3 - Validate
+
+Verify the following before reporting done (scoped to the effective task set — if a scope filter is active, only validate tasks within that scope):
+
+- [ ] All tasks in the effective scope are marked as completed (`- [x]`)
+- [ ] No Cross-Cutting Concerns tasks were silently skipped (if the Cross-Cutting Concerns phase is within scope; if skipped, the reason is documented)
+- [ ] Build/compilation passes (if applicable)
+- [ ] Test suite runs and all tests pass (if applicable); if tests fail, self-correct up to 3 attempts before treating it as a technical failure
+- [ ] Constitution check tasks from the Cross-Cutting Concerns phase are all completed (if within scope)
+- [ ] No tasks remain in an ambiguous or blocked state without user acknowledgement
+- [ ] The implementation follows the architecture decisions in plan.md
+
+### Step 4 - Summarize
+
+After all tasks are complete, report a summary using this structure:
+
+```
+## Implementation Summary: <spec-name>
+
+**Scope**: All tasks / [specified scope filter]
+
+**Tasks**: N completed / N total [in scope]
+
+**Test Results**: N passed, N failed (if applicable)
+
+**Constitution Checks**: passed / N skipped (with reasons)
+
+**Unresolved failures** (if any):
+- [TaskID] <description>: <error context>
+
+**Remaining tasks** (if scoped run): N tasks in N phases not yet implemented
+
+**Next step**: <specific suggestion>
+```
+
+For the next step: if unresolved failures remain, suggest the specific fix or command to unblock them. Otherwise suggest the natural follow-up — such as opening a pull request, running acceptance tests, or notifying stakeholders that the feature is ready for review.

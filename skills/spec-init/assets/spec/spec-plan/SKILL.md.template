@@ -1,0 +1,154 @@
+---
+name: spec-plan
+description: Guide to draft an implementation plan based on a specification. Use when users want to design or plan the technical implementation of a specification, including architecture decisions, tech stack selection, and file structure. Also triggers when users mention creating or updating an implementation plan for a spec, designing the architecture for a feature, or selecting tech stack decisions.
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+## Execution Flow
+
+### Step 0 - Pre-flight Checks
+
+Run all checks below in order. If any check fails, report the corresponding error and abort immediately.
+
+1. **Spec name provided**: If the input is empty and no spec name can be inferred from the conversation context, abort:
+
+   ```text
+   Error: I do not know which specification to plan. You can point it out like this:
+
+   - create a plan for the add-user-auth specification
+   - /spec-plan add-user-auth
+   ```
+
+2. **Spec file exists**: If `specs/<spec-name>/spec.md` does not exist or is empty, abort:
+
+   ```text
+   Error: No specification found at specs/<spec-name>/spec.md.
+   Run /spec-specify <spec-name> first to create the specification.
+   ```
+
+3. **Resource convention file**: Check whether `specs/inbox/README.md` exists. Record the result as `has_resource_convention` for use in Step 1. This does NOT block execution — if the file is missing, external resource loading is skipped silently.
+
+### Step 1 - Load Context
+
+- Read `specs/<spec-name>/spec.md` for the full specification details.
+- Check whether `specs/<spec-name>/plan.md` already exists:
+   - If it does **not** exist: proceed to create a new plan from the template.
+   - If it **exists**: load the existing plan into memory and treat this operation as an **update**. The existing plan content serves as additional context during re-derivation in Step 2 — it is NOT discarded.
+- Check whether `specs/<spec-name>/tasks.md` exists and record the result in memory for use in Step 5.
+- If `has_resource_convention` is true (from Step 0), scan `specs/<spec-name>/refs/` for external resources relevant to the `plan` stage:
+   1. Read the Resource Type Convention table in `specs/inbox/README.md`.
+   2. Identify rows where the `Consumed By` column includes `plan`.
+   3. Collect the `Suffix Pattern` from each matching row.
+   4. Glob `specs/<spec-name>/refs/` with the collected patterns.
+   5. Load the content of all matched files into working memory. Use loaded resources as supplementary context for architecture decisions, data model design, and file structure planning.
+
+   If `has_resource_convention` is false or `specs/<spec-name>/refs/` does not exist, skip external resource loading silently.
+- Read the following project files to determine the current tech stack and dependencies:
+   - `README.md` for a comprehensive project overview.
+   - Dependency files like `package.json`, `requirements.txt`, `pom.xml` to identify tech stacks and libraries in use.
+   - Only ask the user about tech stacks if they **cannot be determined** from the above files.
+
+### Step 2 - Draft Plan from Template
+
+1. Read [plan-template.md](assets/plan-template.md) as the base structure for the plan (skip if updating an existing plan — use the loaded plan as the base instead). Read [plan-examples.md](assets/plan-examples.md) for format examples when filling each section — do NOT copy examples verbatim into the output.
+
+   **Update mode** (existing plan loaded in Step 1): Perform a **section-level merge** instead of a full overwrite. For each section, compare the existing content against what the current spec and project context would produce:
+   - If the spec content driving that section has **changed**: re-derive the section, using the existing content as reference context (preserve manually written rationale or resolved `NEEDS CLARIFICATION` values when they remain valid under the updated spec). A rationale remains valid if the spec requirement it addresses has not changed in scope, acceptance criteria, or priority; if any of these have changed, re-derive the rationale.
+   - If the spec content driving that section has **not changed**: preserve the existing section as-is.
+   - If the user has added content that does not originate from any spec section (e.g., hand-written notes, additional design rationale): preserve it unless it contradicts the updated spec. If user-added content is removed because it contradicts the updated spec, report it as a WARNING in Step 5.
+
+2. Fill Technical Context section:
+   - Determine whether this is a **greenfield** or **existing** project:
+      - Check for a primary source directory (e.g., `src/`, `lib/`, `app/`, or language-specific equivalents like `pkg/`, `internal/`). If a source directory exists and contains at least one non-empty source code file (not just config or boilerplate): treat as **existing project** and use the _feature_ format.
+      - If no source directory exists, or the source directory contains no source code files: treat as **greenfield** and use the _project setup_ format.
+      - If still ambiguous (e.g., only generated code or scaffolding exists), ask the user: "Is this a new project or are you adding to an existing one?"
+   - If the spec introduces no new dependencies or constraints beyond what is already present: write `No new technical context needed`.
+   - If multiple options are available, select the most suitable ones based on project needs. If still unclear, ask the user. If the user cannot provide the information, fill the relevant fields with `NEEDS CLARIFICATION` and surface them as WARNINGs in Step 3.
+
+3. Fill Core Changes section with architecture-level decisions and design rationale derived from the specification. Focus on structural choices and the reasoning behind them — not individual file changes.
+   - Each entry SHOULD follow the pattern: **[Decision]** — [why this approach was chosen over alternatives].
+   - Examples:
+      - Introduce a service layer between route handlers and data access — keeps business logic testable in isolation without spinning up HTTP infrastructure.
+      - Use optimistic locking on the `Order` entity — prevents silent data loss under concurrent updates without the overhead of pessimistic locks.
+      - Co-locate feature modules (handler + service + model) rather than splitting by layer — reduces cross-directory jumps for a feature-centric team workflow.
+   - Omit entries for decisions that are either obvious from the spec or have no meaningful alternatives.
+
+4. Fill Constitution Check section from the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block in the [plan-template.md](assets/plan-template.md) asset (which may have been populated by `/spec-constitution`). If the block between the markers is empty, preserve it as-is — it indicates no constitution has been defined for this project yet. If the markers are absent or malformed, preserve the section empty and record it as a WARNING in Step 5.
+   - After filling the section, review each check item against the current plan design. Classify violations by their RFC 2119 keyword:
+      - **MUST / MUST NOT violations**: The plan cannot proceed. Abort with:
+
+         ```text
+         Error: Constitution MUST violation(s) detected — plan cannot proceed:
+
+         - [check item]: [specific reason this plan violates it]
+           Suggestion: [concrete change to the plan or spec that would resolve the violation]
+
+         Resolve the violation(s) above before re-running /spec-plan <spec-name>.
+         To amend the constitution itself, run /spec-constitution first.
+         ```
+
+      - **SHOULD / SHOULD NOT violations**: The plan can proceed, but the user MUST acknowledge. Record each as a WARNING and report:
+
+         ```text
+         Constitution SHOULD violation(s) detected — plan can proceed with acknowledgement:
+
+         - [check item]: [specific reason this plan deviates]
+           Suggestion: [concrete change that would bring the plan into full compliance]
+
+         Options:
+           A - Fix the violations before proceeding
+           B - Acknowledge and proceed (violations will be noted in the plan summary)
+           C - Abort
+         ```
+
+         If the user chooses B, record the acknowledged violations in the plan summary (Step 5). If the user chooses A, apply the fixes and re-validate.
+
+5. Document **all** file changes in the File Modifications section using the tree format from the template — list every file to be added, modified, or deleted. Do not limit this to a subset.
+6. Fill the Dependencies section with all cross-file import relationships relevant to this plan.
+7. Document all data model updates with entity fields, relationships, constraints, validations, and state transitions where applicable.
+
+### Step 3 - Validate
+
+Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
+
+- [ ] All mandatory template sections have concrete content (no unfilled `[PLACEHOLDER]` tokens)
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches what is present in the plan-template.md asset and is preserved exactly as-is (managed by `/spec-constitution`); an empty block is acceptable if the markers contain no content
+- [ ] File Modifications tree lists **all** files with Add / Modify / Delete annotations
+- [ ] Dependencies section explicitly lists all cross-file import relationships
+- [ ] Data Models section documents all entity changes
+
+If any item still fails after 3 iterations, report it as a WARNING and ask the user to provide the missing information before writing the file.
+
+### Step 4 - Write
+
+After all validations pass, strip all `<!-- Example: ... -->` and `<!-- ... ACTION REQUIRED ... -->` HTML comment blocks from the content, then overwrite `specs/<spec-name>/plan.md` with the result.
+
+### Step 5 - Summarize
+
+- Report the path to the written plan file.
+- Provide a plan summary (1-2 sentences).
+- List the top 3 most impactful file changes with rationale.
+- List the top 3 most significant data model updates with rationale.
+- If any WARNINGs were recorded during drafting (e.g., missing constitution markers, `NEEDS CLARIFICATION` fields), list them here. For any `NEEDS CLARIFICATION` fields, include resolution guidance:
+
+   ```text
+   WARNING: The following fields are marked as NEEDS CLARIFICATION:
+   - [field name in section]
+
+   Options to resolve:
+     1. Edit specs/<spec-name>/plan.md directly to fill in the missing decisions
+     2. Update the spec first (/spec-clarify or /spec-specify), then re-run /spec-plan
+   ```
+- If `specs/<spec-name>/tasks.md` was found in Step 1, report the following warning:
+
+   ```text
+   WARNING: specs/<spec-name>/tasks.md already exists and may now be out of date.
+   Re-run /spec-tasks <spec-name> to regenerate tasks from the updated plan.
+   ```
+
+- Suggest the next step: run `/spec-tasks <spec-name>` to generate implementation tasks.
