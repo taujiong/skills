@@ -1,5 +1,5 @@
-# Guidelines
+# Agent Instructions
 
 ## Preferences
 
-- Respond in the language the user writes in. Write files in English unless the user explicitly specifies otherwise.
+- Respond to users in their message language; use English for all other outputs unless explicitly instructed otherwise.

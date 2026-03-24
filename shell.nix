@@ -1,7 +1,8 @@
 { pkgs, ... }:
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    bun
+    lefthook
     nixfmt
+    oxfmt
   ];
 }
