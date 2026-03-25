@@ -24,7 +24,7 @@ Error: No valid input provided. Please explain what you want to build and why. F
 
 Create a timestamped short name for the specification:
 
-1. Determine the current date and hour (24-hour format, zero-padded). Format: `YYYY-MM-DD-HH`.
+1. Run `date -u +%Y-%m-%d-%H` to get the current UTC date and hour (24-hour format, zero-padded). Format: `YYYY-MM-DD-HH`. Do NOT infer or guess the current time — always execute the command.
 2. Analyze the description and extract the most meaningful keywords.
 3. Create a 2-4 word short name that captures the essence of the specification.
 4. Combine as: `<timestamp>-<short-name>`.
@@ -35,7 +35,7 @@ Naming rules for the short name portion:
 - Preserve technical terms and acronyms (OAuth2, API, JWT, etc.).
 - Keep it concise but descriptive enough to identify the specification at a glance.
 
-Examples (assuming current time is 2026-03-20 11:xx):
+Examples (assuming current UTC time is 2026-03-20 11:xx):
 
 - "I want to add user authentication" → `2026-03-20-11-add-user-auth`
 - "Implement OAuth2 integration for the API" → `2026-03-20-11-support-oauth2-integration`
