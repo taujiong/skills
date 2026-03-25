@@ -105,7 +105,12 @@ If the constitution includes a principle about identifier naming (code style):
 
 **Do not write any files in this step.** For each template, derive the updated content in memory:
 
-1. Locate the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pair.
+1. Locate the template file using its sibling-skill path (relative to this skill's own directory):
+   - `spec-template.md` → [../spec-specify/assets/spec-template.md](../spec-specify/assets/spec-template.md)
+   - `plan-template.md` → [../spec-plan/assets/plan-template.md](../spec-plan/assets/plan-template.md)
+   - `tasks-template.md` → [../spec-tasks/assets/tasks-template.md](../spec-tasks/assets/tasks-template.md)
+
+   Then locate the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pair within that file.
 2. Compute the replacement content between the markers based on the principle type mapping above.
 3. Preserve the markers themselves and the two boilerplate comment lines between them word-for-word: the "managed by spec-constitution" line and the "Run /spec-constitution" line.
 4. Hold the updated template content in memory — all writes happen in Step 6.
