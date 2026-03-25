@@ -48,22 +48,6 @@ Run all checks below in order. If any check fails, report the corresponding erro
 
 4. **Resource convention file**: Check whether `specs/inbox/README.md` exists. Record the result as `has_resource_convention` for use in Step 1. This does NOT block execution — if the file is missing, external resource loading is skipped silently.
 
-5. **Git repository**: Check whether the current working directory is inside a git repository. Record the result as `is_git_repo` for use in Step 2 (Phase Checkpoints). This does NOT block execution — if not a git repository, phase checkpoint commits are skipped silently and a note is included in the final summary.
-
-6. **Uncommitted changes** (only if `is_git_repo` is true): Check whether the working tree has staged or unstaged changes. If uncommitted changes are detected, ask the user:
-
-   ```text
-   Warning: The working tree has uncommitted changes. Phase checkpoint commits
-   may include these unrelated changes, and reverting a checkpoint would also
-   discard them.
-
-   Options:
-     A - Continue anyway (uncommitted changes will be included in checkpoint commits)
-     B - Abort (commit or stash your changes first, then re-run)
-   ```
-
-   Wait for the user's decision. If the user chooses B, abort.
-
 ### Step 1 - Load Context
 
 - Read `specs/constitution.md` for the core principles and standards that MUST be followed during implementation. If this file does not exist, skip constitution-related checks and note in the final summary that no constitution was defined.
@@ -123,18 +107,7 @@ If tasks.md does not contain any test tasks, skip TDD phase handling entirely.
    - If still unresolvable after the user's guidance, halt and report the specific error with full context.
 - **Judgment ambiguities** (task description conflicts with actual code, or a plan assumption does not hold in practice): do NOT halt — ask the user directly before proceeding.
 
-#### Phase Checkpoints
-
-If `is_git_repo` is true (from Step 0), create a git commit after completing each phase as a recoverable checkpoint. Use Conventional Commits format for commit messages:
-
-- Setup phase: `chore(<spec-name>): initialize project structure and dependencies`
-- Foundational phase: `feat(<spec-name>): add foundational infrastructure`
-- User Story phases: `feat(<spec-name>): implement <story title>`
-- Cross-Cutting Concerns: `chore(<spec-name>): complete cross-cutting concerns and quality gates`
-
-On unresolvable failure mid-phase, suggest reverting to the last phase checkpoint commit to restore a clean state.
-
-If `is_git_repo` is false, skip all checkpoint commits silently. On unresolvable failure mid-phase, note that no checkpoint is available for rollback and suggest the user manually review and revert the changes.
+On unresolvable failure mid-phase, suggest the user manually review and revert the changes.
 
 ### Step 3 - Validate
 

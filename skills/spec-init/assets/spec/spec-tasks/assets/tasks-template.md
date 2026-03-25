@@ -72,6 +72,5 @@
 - [Story] label maps each task to a specific user story for traceability
 - Each user story SHOULD be independently completable and testable
 - Verify tests fail before implementing
-- Commit after each task or logical group
 - Stop at any checkpoint to validate the story independently
 - Avoid vague tasks and cross-story dependencies that break independence
