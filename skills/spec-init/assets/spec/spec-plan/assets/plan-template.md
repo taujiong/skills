@@ -21,8 +21,6 @@ See plan-examples.md for format examples.
 _GATE: Must pass before implementation begins. Re-check after file modifications are finalized._
 
 <!-- constitution:begin -->
-<!-- This section is managed by spec-constitution. Do not edit manually between these markers. -->
-<!-- Run /spec-constitution to update when the project constitution changes. -->
 <!-- constitution:end -->
 
 ## File Modifications

@@ -130,8 +130,6 @@ These MUST be verifiable without knowing implementation details.
 -->
 
 <!-- constitution:begin -->
-<!-- This section is managed by spec-constitution. Do not edit manually between these markers. -->
-<!-- Run /spec-constitution to update when the project constitution changes. -->
 <!-- constitution:end -->
 
 <!--

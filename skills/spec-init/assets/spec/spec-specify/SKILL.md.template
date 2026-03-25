@@ -74,7 +74,22 @@ If the user chooses Option C (Merge): load the existing spec into memory, then p
    - If a clarification answer from a prior session is superseded, do NOT delete the session entry — instead append `(superseded by merge — see updated [section name])` to the answer line.
 - **User-added content**: Preserve manually added content that does not originate from any template section, unless it contradicts the new description. If removed due to contradiction, report it as a WARNING.
 
-### Step 2 - Discover External Resources
+### Step 2 - Load Constitution Checks and Discover External Resources
+
+#### Load Constitution Checks
+
+Check whether `specs/checks/spec-criteria.md` exists:
+
+- If it **exists**: read its content and store in memory as `constitution_criteria`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the generated `spec.md` in Step 4.
+- If it does **not** exist: set `constitution_criteria` to an empty string and record a WARNING for Step 7:
+
+   ```text
+   WARNING: specs/checks/spec-criteria.md not found — the Success Criteria section will
+   have no constitution-derived checks. Run /spec-constitution first to define project-wide
+   quality standards.
+   ```
+
+#### Discover External Resources
 
 After the spec directory is created (or confirmed via collision handling in Step 1), scan the external resource inbox at `specs/inbox/` for resource files.
 
@@ -170,7 +185,10 @@ After the user answers, validate the response. If ambiguous, ask for a quick dis
    - Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion).
 
 6. Follow the template section order exactly. Do not reorder sections. Optional sections (Clarifications, Assumptions) that have no content MUST retain their heading with the body replaced by `<!-- No content yet -->`.
-7. Preserve all `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker blocks and their content exactly as they appear in the template. Do not modify, remove, or replace content between these markers — they are managed by `/spec-constitution`.
+7. Inject constitution checks into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block in the `## Success Criteria` section:
+   - Replace the content between the markers with `constitution_criteria` (loaded in Step 2).
+   - If `constitution_criteria` is an empty string, leave the block empty — preserve both markers but write nothing between them.
+   - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
 
 **Do not write any files in this step.** Hold the complete specification content in memory — it is validated in Step 5 and written to disk in Step 6.
 
@@ -192,7 +210,7 @@ Silently self-correct any failing items and re-check (max 3 iterations). Only ou
 - [ ] Assumptions are documented and clearly labeled (no hidden assumptions)
 - [ ] User stories are prioritized with explicit P1/P2/P3 labels and each covers a primary flow
 - [ ] Written for non-technical stakeholders (no unexplained jargon)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches what is present in the spec-template.md asset and is preserved exactly as-is (managed by `/spec-constitution`); an empty block is acceptable if the markers contain no content
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches `constitution_criteria` loaded in Step 2 (empty block is acceptable if `constitution_criteria` is empty)
 
 #### Feature-only (type: Feature)
 

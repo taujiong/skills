@@ -29,7 +29,14 @@ If the input is present but ambiguous about what principle to add or why it matt
 
 Read `specs/constitution.md`. If the file is missing, copy [constitution-template.md](assets/constitution-template.md) verbatim (including all placeholder tokens and HTML comments) to `specs/constitution.md` — placeholders are resolved in Step 2 and Step 3.
 
-If the file already exists and contains resolved principles (not just placeholders), extract and retain in memory a snapshot of all existing normative rules — each MUST, MUST NOT, SHOULD, SHOULD NOT statement with its parent principle name. This snapshot is used in Step 6 for breaking-change detection.
+If the file already exists and contains resolved principles (not just placeholders), capture a snapshot for breaking-change detection in Step 7:
+
+- Read the existing `specs/constitution.md` and extract all normative rules — each MUST, MUST NOT, SHOULD, SHOULD NOT statement with its parent principle name. Store this as `prior_constitution_snapshot`.
+- Read `specs/checks/spec-criteria.md` if it exists; store content as `prior_spec_criteria`.
+- Read `specs/checks/plan-check.md` if it exists; store content as `prior_plan_check`.
+- Read `specs/checks/tasks-concerns.md` if it exists; store content as `prior_tasks_concerns`.
+
+If none of the above files exist, this is a first-time constitution creation — skip the snapshot step entirely.
 
 Identify all placeholder tokens of the form `[ALL_CAPS_IDENTIFIER]`. If none are found, skip to Step 3.
 
@@ -58,17 +65,19 @@ If any inferred value is ambiguous and cannot be resolved with high confidence, 
    - One-line `Rationale:` immediately after the heading.
    - One or more named subsections (`####`) each containing a bullet list of non-negotiable rules.
 
-### Step 4 - Consistency Propagation
+### Step 4 - Derive Checks Content
 
-**Prerequisite**: Step 3 complete — constitution content is finalized before propagating to templates.
+**Prerequisite**: Step 3 complete — constitution content is finalized before deriving checks.
 
-Use the principle type table below to determine what to write into each template, then follow the propagation mechanics to apply the changes.
+Use the principle type table below to determine what to write into each checks file, then follow the derivation mechanics to prepare the content.
 
-#### Principle Type to Template Mapping
+**Do not write any files in this step.** Derive all checks content in memory only.
 
-Use the table below to determine which templates to update for each constitutional principle. A principle may appear in multiple templates if it has actionable checks at each stage.
+#### Principle Type to Checks File Mapping
 
-| Principle Type                                                                                                                    | spec-template.md (Success Criteria)                            | plan-template.md (Constitution Check)                     | tasks-template.md (section: "Phase N: Cross-Cutting Concerns") |
+Use the table below to determine which checks files to populate for each constitutional principle. A principle may appear in multiple files if it has actionable checks at each stage.
+
+| Principle Type                                                                                                                    | specs/checks/spec-criteria.md (Success Criteria)               | specs/checks/plan-check.md (Constitution Check)           | specs/checks/tasks-concerns.md (Cross-Cutting Concerns)        |
 | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
 | **Behavioral / UX** — user-perceivable outcomes (e.g., error messages, accessibility, response time felt by users)                | State as technology-agnostic acceptance criterion               | —                                                         | Verify against running system                                  |
 | **Technical constraint** — tool/architecture/service choices (e.g., must use specific auth library, must expose REST not GraphQL) | —                                                              | Gate on the design decision being made                    | Verify the chosen tool/pattern is correctly applied            |
@@ -85,39 +94,35 @@ For any principle that does not fit cleanly into the table above, ask:
 
 - **Yes** → include it.
 - **No, because the artifact does not exist yet** → omit it; it belongs in a later stage.
-- **No, because this stage forbids implementation details** (spec-template.md) → omit it; it belongs in plan-template.md or tasks-template.md.
+- **No, because this stage forbids implementation details** (spec-criteria.md) → omit it; it belongs in plan-check.md or tasks-concerns.md.
 
-#### Propagation Examples
+#### Derivation Examples
 
 If the constitution includes a principle about page load time performance:
 
-- `spec-template.md` **includes** a success criterion: "Page load time MUST be under X ms for the primary user journey" — this is a technology-agnostic behavioral outcome.
-- `plan-template.md` **includes** a gate: "Performance budget is defined and a profiling/benchmarking tool is selected" — this depends on the technical design.
-- `tasks-template.md` **includes** tasks: "Run performance benchmark, verify p95 load time meets target" — verifiable against real running code.
+- `spec-criteria.md` **includes** a success criterion: "Page load time MUST be under X ms for the primary user journey" — this is a technology-agnostic behavioral outcome.
+- `plan-check.md` **includes** a gate: "Performance budget is defined and a profiling/benchmarking tool is selected" — this depends on the technical design.
+- `tasks-concerns.md` **includes** tasks: "Run performance benchmark, verify p95 load time meets target" — verifiable against real running code.
 
 If the constitution includes a principle about identifier naming (code style):
 
-- `spec-template.md` **omits** it — no identifiers exist at specification time.
-- `plan-template.md` **omits** it — no identifiers exist at design time.
-- `tasks-template.md` **includes** it — real code exists and naming can be reviewed.
+- `spec-criteria.md` **omits** it — no identifiers exist at specification time.
+- `plan-check.md` **omits** it — no identifiers exist at design time.
+- `tasks-concerns.md` **includes** it — real code exists and naming can be reviewed.
 
-#### Propagation Mechanics
+#### Derivation Mechanics
 
-**Do not write any files in this step.** For each template, derive the updated content in memory:
+For each checks file, derive its complete replacement content in memory:
 
-1. Locate the template file using its sibling-skill path (relative to this skill's own directory):
-   - `spec-template.md` → [../spec-specify/assets/spec-template.md](../spec-specify/assets/spec-template.md)
-   - `plan-template.md` → [../spec-plan/assets/plan-template.md](../spec-plan/assets/plan-template.md)
-   - `tasks-template.md` → [../spec-tasks/assets/tasks-template.md](../spec-tasks/assets/tasks-template.md)
+- `specs/checks/spec-criteria.md`: bullet lines representing technology-agnostic acceptance criteria derived from applicable principles. Each bullet MUST follow the format: `- **SC-C[N]**: [measurable, user-focused outcome]`.
+- `specs/checks/plan-check.md`: gate check lines derived from applicable principles. Each line MUST follow the format: `- **CC-[N]**: [gate check — what must be verified before implementation begins]`.
+- `specs/checks/tasks-concerns.md`: verification task lines derived from applicable principles. Each line MUST follow the format: `- [ ] [Verification task with concrete scope or action]`.
 
-   Then locate the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pair within that file.
-2. Compute the replacement content between the markers based on the principle type mapping above.
-3. Preserve the markers themselves and the two boilerplate comment lines between them word-for-word: the "managed by spec-constitution" line and the "Run /spec-constitution" line.
-4. Hold the updated template content in memory — all writes happen in Step 6.
+If a checks file has no applicable content (no principles map to it), its replacement content is an empty string — the file will still be written (or overwritten with an empty body) in Step 6.
 
 ### Step 5 - Validate
 
-**Prerequisite**: Step 4 complete — all applicable templates derived in memory before writing to disk.
+**Prerequisite**: Step 4 complete — all checks content derived in memory before writing to disk.
 
 Validate the following:
 
@@ -126,7 +131,7 @@ Validate the following:
 - [ ] Principles use RFC 2119 keywords (MUST, MUST NOT, SHOULD, SHOULD NOT) in uppercase, each with a rationale line.
 - [ ] Each principle section has a `Rationale:` line immediately after the heading and at least one named subsection (`####`) with bullet rules.
 - [ ] Standards sections provide clear, actionable requirements.
-- [ ] All applicable templates have their `constitution:begin/end` blocks updated and contain no stale content from prior constitution versions.
+- [ ] All three checks files have been derived (even if empty).
 - [ ] Glossary: if any principle uses domain-specific or ambiguous terms, the table contains at least one entry with no placeholder rows remaining. If no domain-specific terms are used, replace the placeholder row with `N/A`.
 
 ### Step 6 - Write
@@ -134,17 +139,23 @@ Validate the following:
 After all validations pass, write all files in one batch. This is the **only** step that writes to disk:
 
 - Overwrite `specs/constitution.md` with the drafted constitution content.
-- For each applicable template: locate the `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pair, replace **only** the content between the markers with the updated content derived in Step 4, and preserve all content outside the markers unchanged. The markers themselves and the two boilerplate comment lines between them MUST be preserved word-for-word.
+- Write `specs/checks/spec-criteria.md` with the derived content (create `specs/checks/` directory if it does not exist). If no principles apply, write an empty file.
+- Write `specs/checks/plan-check.md` with the derived content. If no principles apply, write an empty file.
+- Write `specs/checks/tasks-concerns.md` with the derived content. If no principles apply, write an empty file.
+
+The three template files (`spec-template.md`, `plan-template.md`, `tasks-template.md`) are **not modified** by this skill. Their `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker blocks remain empty; the downstream skills (`spec-specify`, `spec-plan`, `spec-tasks`) read the checks files at runtime and inject their content.
 
 ### Step 7 - Breaking-Change Detection
 
-**Skip this step if** no prior constitution snapshot was captured in Step 1 (i.e., this is a first-time constitution creation).
+**Skip this step if** no prior snapshot was captured in Step 1 (i.e., this is a first-time constitution creation).
 
-Compare the new constitution (from Step 3) against the prior snapshot (from Step 1). For each rule, determine whether the change **tightens constraints on existing code** — i.e., code that was compliant under the old constitution may now be non-compliant. Trigger a warning when any of the following is detected:
+Compare the new constitution (from Step 3) against `prior_constitution_snapshot` (from Step 1). For each rule, determine whether the change **tightens constraints on existing code** — i.e., code that was compliant under the old constitution may now be non-compliant. Trigger a warning when any of the following is detected:
 
 - A new MUST or MUST NOT rule is **added** (existing code may never have implemented it).
 - An existing SHOULD is **upgraded** to MUST (previously optional behavior is now mandatory).
 - An existing MUST is **reversed** to MUST NOT, or vice versa (compliant code is now in violation).
+
+Additionally, compare the new checks file content (from Step 4) against the prior snapshots (`prior_spec_criteria`, `prior_plan_check`, `prior_tasks_concerns`). Apply the same tightening logic: warn when new gate checks or verification tasks are added, or when existing ones are made stricter.
 
 **Do NOT warn** when:
 
@@ -166,8 +177,8 @@ necessary changes — do NOT modify existing spec documents directly.
 
 ### Step 8 - Summarize
 
-- Report which files were updated (constitution + which templates).
+- Report which files were updated: `specs/constitution.md` and the three checks files under `specs/checks/`.
 - List principles that were added, modified, or removed.
+- For each checks file, report how many check items it contains (or note "empty — no applicable principles").
 - Include breaking-change warnings from Step 7 (if any).
-- For each template not updated, note the reason (e.g., no applicable principles for that stage).
 - Report any placeholders that could not be resolved automatically and require manual follow-up.

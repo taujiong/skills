@@ -45,8 +45,6 @@
 **Purpose**: Improvements that affect multiple user stories and constitutional compliance verification
 
 <!-- constitution:begin -->
-<!-- This section is managed by spec-constitution. Do not edit manually between these markers. -->
-<!-- Run /spec-constitution to update when the project constitution changes. -->
 <!-- constitution:end -->
 
 <!-- GENERATE_TASKS_HERE: Quality gates and cross-cutting verification tasks -->

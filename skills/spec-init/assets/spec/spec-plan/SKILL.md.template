@@ -40,6 +40,16 @@ Run all checks below in order. If any check fails, report the corresponding erro
    - If it does **not** exist: proceed to create a new plan from the template.
    - If it **exists**: load the existing plan into memory and treat this operation as an **update**. The existing plan content serves as additional context during re-derivation in Step 2 — it is NOT discarded.
 - Check whether `specs/<spec-name>/tasks.md` exists and record the result in memory for use in Step 5.
+- Check whether `specs/checks/plan-check.md` exists:
+   - If it **exists**: read its content and store in memory as `constitution_check`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the generated `plan.md` in Step 2.
+   - If it does **not** exist: set `constitution_check` to an empty string and record a WARNING for Step 5:
+
+      ```text
+      WARNING: specs/checks/plan-check.md not found — the Constitution Check section will
+      have no constitution-derived gates. Run /spec-constitution first to define project-wide
+      quality standards.
+      ```
+
 - If `has_resource_convention` is true (from Step 0), scan `specs/<spec-name>/refs/` for external resources relevant to the `plan` stage:
    1. Read the Resource Type Convention table in `specs/inbox/README.md`.
    2. Identify rows where the `Consumed By` column includes `plan`.
@@ -78,7 +88,10 @@ Run all checks below in order. If any check fails, report the corresponding erro
       - Co-locate feature modules (handler + service + model) rather than splitting by layer — reduces cross-directory jumps for a feature-centric team workflow.
    - Omit entries for decisions that are either obvious from the spec or have no meaningful alternatives.
 
-4. Fill Constitution Check section from the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block in the [plan-template.md](assets/plan-template.md) asset (which may have been populated by `/spec-constitution`). If the block between the markers is empty, preserve it as-is — it indicates no constitution has been defined for this project yet. If the markers are absent or malformed, preserve the section empty and record it as a WARNING in Step 5.
+4. Fill Constitution Check section by injecting `constitution_check` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
+   - Replace the content between the markers with `constitution_check`.
+   - If `constitution_check` is an empty string, leave the block empty — preserve both markers but write nothing between them.
+   - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
    - After filling the section, review each check item against the current plan design. Classify violations by their RFC 2119 keyword:
       - **MUST / MUST NOT violations**: The plan cannot proceed. Abort with:
 
@@ -117,7 +130,7 @@ Run all checks below in order. If any check fails, report the corresponding erro
 Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
 
 - [ ] All mandatory template sections have concrete content (no unfilled `[PLACEHOLDER]` tokens)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches what is present in the plan-template.md asset and is preserved exactly as-is (managed by `/spec-constitution`); an empty block is acceptable if the markers contain no content
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches `constitution_check` loaded in Step 1 (empty block is acceptable if `constitution_check` is empty)
 - [ ] File Modifications tree lists **all** files with Add / Modify / Delete annotations
 - [ ] Dependencies section explicitly lists all cross-file import relationships
 - [ ] Data Models section documents all entity changes
