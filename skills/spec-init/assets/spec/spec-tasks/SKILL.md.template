@@ -38,11 +38,11 @@ Run all checks below in order. If any check fails, report the corresponding erro
    Run /spec-plan <spec-name> first to create the plan.
    ```
 
-4. **No unresolved plan decisions**: Scan `specs/<spec-name>/plan.md` for the literal strings `NEEDS CLARIFICATION`, `TODO`, and `TBD`. If any are found, abort:
+4. **No unresolved plan decisions**: Scan `specs/<spec-name>/plan.md` for the literal string `NEEDS CLARIFICATION`. If any are found, abort:
 
    ```text
    Error: The implementation plan at specs/<spec-name>/plan.md contains unresolved decisions
-   marked as NEEDS CLARIFICATION, TODO, or TBD.
+   marked as NEEDS CLARIFICATION.
 
    Options to resolve:
      1. Edit specs/<spec-name>/plan.md directly to fill in the missing decisions
@@ -79,8 +79,8 @@ Run all checks below in order. If any check fails, report the corresponding erro
 - Load `specs/<spec-name>/plan.md` and extract tech stack, libraries, file modifications, and data model changes.
 - Record the full list of files from the File Modifications section of `plan.md` in memory — this is used for path validation in Step 3. If the File Modifications section is empty or contains `NEEDS CLARIFICATION`, record an empty list and skip path validation in Step 3 (report a WARNING instead).
 - Check whether `specs/checks/tasks-concerns.md` exists:
-   - If it **exists**: read its content and store in memory as `constitution_concerns`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the Cross-Cutting Concerns phase in Step 2.
-   - If it does **not** exist: set `constitution_concerns` to an empty string and record a WARNING for Step 5:
+   - If it **exists**: read its content and store in memory as `constitution_tasks_concerns`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the Cross-Cutting Concerns phase in Step 2.
+   - If it does **not** exist: set `constitution_tasks_concerns` to an empty string and record a WARNING for Step 5:
 
       ```text
       WARNING: specs/checks/tasks-concerns.md not found — the Cross-Cutting Concerns phase
@@ -110,7 +110,7 @@ Run all checks below in order. If any check fails, report the corresponding erro
 - **Unchanged user story** (story exists in both old spec and current spec with no material changes to acceptance criteria or requirements): preserve the existing phase as-is, including completion status and manual annotations.
 - **Changed user story** (story exists but acceptance criteria, requirements, or file modifications have changed): re-derive the tasks for that phase. For tasks that map to unchanged requirements within the story, preserve their completion status. For new or changed requirements, generate new tasks with `[ ]` status. Report re-derived phases in Step 4.
 - **New user story** (story exists in current spec but not in existing tasks): generate a new phase with all tasks in `[ ]` status. Insert it in priority order among existing phases.
-- **Removed user story** (story exists in existing tasks but not in current spec): remove the phase entirely. If it contained completed tasks, report as a WARNING in Step 4: `WARNING: Removed phase "[phase name]" which had N completed task(s).`
+- **Removed user story** (story exists in existing tasks but not in current spec): remove the phase entirely. If it contained completed tasks, report as a WARNING in Step 5: `WARNING: Removed phase "[phase name]" which had N completed task(s).`
 - **Setup / Foundational / Cross-Cutting phases**: Re-derive from the current plan. Preserve completion status for tasks whose descriptions match an existing task — a match requires the same file path or scope AND the same action verb (e.g., "Create", "Add", "Implement"); minor wording differences are acceptable if both criteria hold. Generate new tasks for any new requirements.
 - After merge, re-number all Task IDs sequentially (T001, T002, ...) to maintain consistent ordering. Update any cross-references.
 
@@ -123,17 +123,16 @@ For both modes, follow these rules when generating task content:
    - **OPTIONAL**: Skip this phase if `plan.md` contains no cross-story dependencies or shared models that MUST exist before any user story can begin.
    - **CRITICAL**: No user story tasks can be added until all foundational tasks are defined.
 
-3. For each user story, starting with the highest priority (P1), then P2, etc. — follow the organization and phase structure defined in Task Generation Rules below:
-   - Fill story goal, independent test criteria, tests, implementation tasks.
+3. For each user story, starting with the highest priority (P1), then P2, etc. — follow the task format, granularity, organization, and phase structure defined in **Task Generation Rules** below.
    - **Tests**: Generate test tasks by default. Skip test tasks only if the user's original input explicitly states "no tests" or equivalent.
    - **Zero user stories** (e.g., pure infrastructure refactor): If the spec contains no user stories but has behavior-preservation scenarios or refactor work items, treat each scenario as an equivalent "story phase" for task organization purposes. If the spec truly has no actionable scenarios, report a WARNING and generate only Setup, Foundational, and Cross-Cutting Concerns phases.
 
 4. Generate final phase: Cross-Cutting Concerns (e.g., documentation, performance optimization, security hardening).
-   - Inject `constitution_concerns` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
-      - Replace the content between the markers with `constitution_concerns`.
-      - If `constitution_concerns` is an empty string, retain the section heading but add a comment: `<!-- No constitution checks defined — skipping -->` and do not add placeholder tasks.
+   - Inject `constitution_tasks_concerns` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
+      - Replace the content between the markers with `constitution_tasks_concerns`.
+      - If `constitution_tasks_concerns` is an empty string, retain the section heading but add a comment: `<!-- No constitution checks defined — skipping -->` and do not add placeholder tasks.
       - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
-   - If `constitution_concerns` contains verification tasks, include ALL of them — do not silently drop any. For each task, assess its relevance to the current spec/plan context:
+   - If `constitution_tasks_concerns` contains verification tasks, include ALL of them — do not silently drop any. For each task, assess its relevance to the current spec/plan context:
       - **Relevant**: Include as a normal task with a concrete file path or scope derived from the current spec/plan where possible (e.g., "Run security scan on `src/api/`" rather than "Run security scan").
       - **Not applicable**: Include the task but annotate it with `<!-- N/A: <brief reason, e.g. no database in this spec> -->` so the omission is visible and auditable rather than silent. Use these signals to judge applicability: absence of a database component, no external API, no user authentication in the spec/plan.
    - Cross-cutting concern tasks continue the sequential Task ID numbering from the last user story task.
@@ -148,7 +147,7 @@ Silently self-correct any failing items and re-check (max 3 iterations). Only ou
 - [ ] All tasks strictly follow the checklist format defined in Task Generation Rules (checkbox, Task ID, Story label where required, file path or scope)
 - [ ] Task ordering respects dependencies: foundational tasks before user stories, user stories in priority order, test Task IDs lower than implementation Task IDs within each story
 - [ ] Every file path referenced in a task appears in the File Modifications list from `plan.md` (skip this check if the list is empty; placeholder tokens like `[entity]` in paths count as unfilled templates and MUST be replaced with real paths before this check passes; cross-cutting tasks that span multiple files may use a scope description like `across src/api/` instead of a single path)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Cross-Cutting Concerns section; every verification task present in `constitution_concerns` (loaded in Step 1) is accounted for in the output — either as a concrete task (with spec/plan-specific file paths or scopes) or annotated with `<!-- N/A: ... -->` (none silently dropped); an empty block is acceptable if `constitution_concerns` is empty
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Cross-Cutting Concerns section; every verification task present in `constitution_tasks_concerns` (loaded in Step 1) is accounted for in the output — either as a concrete task (with spec/plan-specific file paths or scopes) or annotated with `<!-- N/A: ... -->` (none silently dropped); an empty block is acceptable if `constitution_tasks_concerns` is empty
 
 If any item still fails after 3 iterations, flag it as a WARNING, note the discrepancy, and ask the user to provide the missing information before writing the file.
 
@@ -169,6 +168,14 @@ After all validations pass and cleanup is done, overwrite `specs/<spec-name>/tas
 - List independent test criteria for each story.
 - Suggest the MVP scope (typically User Story 1).
 - If update mode: list phases that were re-derived, added, or removed.
+- If update mode and any Task IDs were renumbered: report a warning:
+
+   ```text
+   WARNING: Task IDs have been renumbered sequentially. Any external references to prior
+   Task IDs (e.g., in comments, commit messages, or linked issues) will no longer match
+   the current tasks.md. Update those references manually if needed.
+   ```
+
 - If any WARNINGs were raised during validation, list them here so the user can review and correct.
 
 **IMPORTANT**: The tasks.md MUST be immediately executable — each task MUST be specific enough that an LLM can complete it without additional context.

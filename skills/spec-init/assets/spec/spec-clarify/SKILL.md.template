@@ -185,6 +185,7 @@ For each question (whether presented alone or in a batch):
 - Stop asking further questions when:
    - All critical ambiguities are resolved early (remaining queued items become unnecessary), OR
    - The question limit is reached.
+- **Early termination**: If the user sends a termination signal ("stop", "done", "quit") at any point during the questioning loop, immediately stop asking further questions and proceed to Step 4 with all answers collected so far. Any unanswered questions are treated as skipped.
 - Never reveal future queued questions in advance.
 - If no valid questions exist at start, immediately report that no critical ambiguities were found.
 
@@ -217,6 +218,8 @@ Perform once after all integrations are applied in memory:
 - No contradictory earlier statement remains (scan for now-invalid alternative choices).
 - Markdown structure is valid; only allowed new headings: `## Clarifications`, `### Session <N>`.
 - Terminology consistency: the same canonical term is used across all updated sections.
+
+If any item fails: silently correct the in-memory content and re-check (max 2 iterations). If still failing after 2 iterations, report the specific failing item(s) and ask the user to provide the missing or corrected information before writing the file. Do not write to disk until all items pass.
 
 ### Step 6 - Write
 

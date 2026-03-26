@@ -74,14 +74,16 @@ If the user chooses Option C (Merge): load the existing spec into memory, then p
    - If a clarification answer from a prior session is superseded, do NOT delete the session entry — instead append `(superseded by merge — see updated [section name])` to the answer line.
 - **User-added content**: Preserve manually added content that does not originate from any template section, unless it contradicts the new description. If removed due to contradiction, report it as a WARNING.
 
+After Step 3 Scope Clarify answers are collected, re-apply these merge rules with the clarification answers treated as part of "the new description" — answers may refine or override the initial section-level merge decisions made before Step 3.
+
 ### Step 2 - Load Constitution Checks and Discover External Resources
 
 #### Load Constitution Checks
 
 Check whether `specs/checks/spec-criteria.md` exists:
 
-- If it **exists**: read its content and store in memory as `constitution_criteria`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the generated `spec.md` in Step 4.
-- If it does **not** exist: set `constitution_criteria` to an empty string and record a WARNING for Step 7:
+- If it **exists**: read its content and store in memory as `constitution_spec_criteria`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the generated `spec.md` in Step 4.
+- If it does **not** exist: set `constitution_spec_criteria` to an empty string and record a WARNING for Step 7:
 
    ```text
    WARNING: specs/checks/spec-criteria.md not found — the Success Criteria section will
@@ -165,7 +167,7 @@ After the user answers, validate the response. If ambiguous, ask for a quick dis
    - Treat loaded resources as additional requirements sources. Map resource content to the most appropriate spec sections based on the resource's nature (e.g., business requirements → User Stories and Functional Requirements; UI interaction flows → Acceptance Scenarios; UI states → Edge Cases; business goals → Success Criteria).
    - If the user's description and an external resource conflict, the user's description takes precedence. Record the conflict in the Assumptions section.
 3. Create user scenarios & testing:
-   - For **feature** specs: if no clear user flow can be determined, abort with `Error: Cannot determine user scenarios — please describe the primary user action this feature enables.`
+   - For **feature** specs: if no clear user flow can be determined, output any clarification answers collected in Step 3 so they are not lost, then abort with `Error: Cannot determine user scenarios — please describe the primary user action this feature enables.`
    - For **bug fix** specs: describe the affected behavior (what the user experiences before and after the fix) instead of a user journey. At least one reproduction scenario is required.
    - For **refactor** specs: describe what behavior MUST remain unchanged for existing users. User-facing scenarios focus on verifying behavior preservation.
    - Split into as small pieces as possible, each with clear acceptance criteria.
@@ -186,17 +188,19 @@ After the user answers, validate the response. If ambiguous, ask for a quick dis
 
 6. Follow the template section order exactly. Do not reorder sections. Optional sections (Clarifications, Assumptions) that have no content MUST retain their heading with the body replaced by `<!-- No content yet -->`.
 7. Inject constitution checks into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block in the `## Success Criteria` section:
-   - Replace the content between the markers with `constitution_criteria` (loaded in Step 2).
-   - If `constitution_criteria` is an empty string, leave the block empty — preserve both markers but write nothing between them.
+   - Replace the content between the markers with `constitution_spec_criteria` (loaded in Step 2).
+   - If `constitution_spec_criteria` is an empty string, leave the block empty — preserve both markers but write nothing between them.
    - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
 
 **Do not write any files in this step.** Hold the complete specification content in memory — it is validated in Step 5 and written to disk in Step 6.
 
 ### Step 5 - Validate
 
-Review the spec against the checklist below. Apply only the sections relevant to the spec type (Feature, Fix, or Refactor) as determined during drafting in Step 4.
+Review the spec (held in memory from Step 4) against the checklist below. Apply only the sections relevant to the spec type (Feature, Fix, or Refactor) as determined during drafting in Step 4.
 
-Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
+**Phase 1 — Silent self-correction**: For each failing item, silently update the in-memory spec to address it, then re-check. Repeat up to 3 iterations. Do not output any intermediate results during this phase.
+
+**Phase 2 — Output and escalation**: After Phase 1, output the final checklist table once. If all items pass, proceed to Step 6. If items still fail, follow the escalation rules below.
 
 #### Universal (all spec types)
 
@@ -208,9 +212,9 @@ Silently self-correct any failing items and re-check (max 3 iterations). Only ou
 - [ ] Scope is clearly bounded with explicit In Scope and Out of Scope subsections
 - [ ] Success criteria are measurable and technology-agnostic
 - [ ] Assumptions are documented and clearly labeled (no hidden assumptions)
-- [ ] User stories are prioritized with explicit P1/P2/P3 labels and each covers a primary flow
+- [ ] User stories are prioritized with explicit priority labels (P1, P2, P3, etc.) and each covers a primary flow
 - [ ] Written for non-technical stakeholders (no unexplained jargon)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches `constitution_criteria` loaded in Step 2 (empty block is acceptable if `constitution_criteria` is empty)
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches `constitution_spec_criteria` loaded in Step 2 (empty block is acceptable if `constitution_spec_criteria` is empty)
 
 #### Feature-only (type: Feature)
 
@@ -235,7 +239,7 @@ Silently self-correct any failing items and re-check (max 3 iterations). Only ou
 
 **If all items pass**: proceed to Step 6.
 
-**If items fail**:
+**If items still fail after Phase 1**:
 
 1. List the failing items with specific issues found.
 2. Self-correct: silently update the spec to address each issue.
@@ -275,10 +279,7 @@ Silently self-correct any failing items and re-check (max 3 iterations). Only ou
 
 ### Step 6 - Write
 
-Overwrite `specs/<spec-name>/spec.md` with the validated specification content:
-
-- Follow the template structure; preserve section order and headings.
-- Replace placeholders with concrete details derived from the feature description and clarifications from Step 3.
+Create the directory `specs/<spec-name>/` if it does not already exist, then write the validated specification content (from Step 5) to `specs/<spec-name>/spec.md`.
 
 ### Step 7 - Summarize
 
@@ -296,28 +297,21 @@ Overwrite `specs/<spec-name>/spec.md` with the validated specification content:
    Re-run /spec-tasks <spec-name> to regenerate tasks from the updated plan.
    ```
 
-- Suggest the next step: run `/spec-plan <spec-name>` to create an implementation plan.
-- **Complexity-based clarification recommendation**: After producing the summary, evaluate the spec against the following complexity indicators:
-
+- **Complexity-based next step**: After producing the summary, evaluate the spec against the following complexity indicators:
    1. 4 or more user stories
    2. Any non-functional requirement lacks a measurable target (vague NFR — e.g., "high performance" without a number)
    3. 2 or more external integration points (third-party services or APIs)
    4. Security or compliance requirements beyond basic authentication
 
-   If **2 or more** indicators are present, append a recommendation block:
-
-   ```text
-   Recommendation: This specification has notable complexity ([list matched indicators]).
-   Consider running /spec-clarify <spec-name> to identify and resolve potential ambiguities
-   before proceeding to planning.
-   ```
-
-   If fewer than 2 indicators are present, do not output this block.
+   - If **2 or more** indicators are present: suggest `/spec-clarify <spec-name>` as the next step, with a brief explanation of which indicators were matched and why clarification reduces rework risk before planning.
+   - Otherwise: suggest `/spec-plan <spec-name>` as the next step.
 
 **Example Output**:
 
+> Note: `<spec-name>` is the timestamped name generated in Step 1 (e.g., `2026-03-20-11-add-user-auth`).
+
 ```markdown
-Spec created at: `specs/<spec-name>/spec.md` with **[N]** edge cases defined, **[M]** assumptions documented, and all checklists passed.
+Spec created at: `specs/2026-03-20-11-add-user-auth/spec.md` with **[N]** edge cases defined, **[M]** assumptions documented, and all checklists passed.
 
 **Edge Cases**:
 
@@ -338,5 +332,5 @@ Spec created at: `specs/<spec-name>/spec.md` with **[N]** edge cases defined, **
 
 Please review the edge cases and assumptions to ensure they are reasonable and complete.
 
-**Next step**: Run `/spec-plan <spec-name>` to create an implementation plan.
+**Next step**: Run `/spec-clarify 2026-03-20-11-add-user-auth` — this spec has [matched indicators], resolving ambiguities now will reduce rework risk during planning.
 ```

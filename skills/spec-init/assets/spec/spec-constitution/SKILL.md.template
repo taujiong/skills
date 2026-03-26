@@ -27,16 +27,16 @@ If the input is present but ambiguous about what principle to add or why it matt
 
 ### Step 1 - Initialize or Load Constitution
 
-Read `specs/constitution.md`. If the file is missing, copy [constitution-template.md](assets/constitution-template.md) verbatim (including all placeholder tokens and HTML comments) to `specs/constitution.md` — placeholders are resolved in Step 2 and Step 3.
+Read `specs/constitution.md` into memory. If the file is missing, load [constitution-template.md](assets/constitution-template.md) into memory instead — do NOT write any file at this point. Placeholders are resolved in Step 2 and Step 3; the file is written to disk in Step 6.
 
-If the file already exists and contains resolved principles (not just placeholders), capture a snapshot for breaking-change detection in Step 7:
+If `specs/constitution.md` already exists (regardless of whether it contains only placeholders or resolved content), capture a snapshot for breaking-change detection in Step 7:
 
 - Read the existing `specs/constitution.md` and extract all normative rules — each MUST, MUST NOT, SHOULD, SHOULD NOT statement with its parent principle name. Store this as `prior_constitution_snapshot`.
 - Read `specs/checks/spec-criteria.md` if it exists; store content as `prior_spec_criteria`.
 - Read `specs/checks/plan-check.md` if it exists; store content as `prior_plan_check`.
 - Read `specs/checks/tasks-concerns.md` if it exists; store content as `prior_tasks_concerns`.
 
-If none of the above files exist, this is a first-time constitution creation — skip the snapshot step entirely.
+If `specs/constitution.md` does not exist, this is a first-time constitution creation — skip the snapshot step entirely.
 
 Identify all placeholder tokens of the form `[ALL_CAPS_IDENTIFIER]`. If none are found, skip to Step 3.
 
@@ -59,7 +59,7 @@ If any inferred value is ambiguous and cannot be resolved with high confidence, 
 **Do not write any files in this step.** Build the complete constitution content in memory only.
 
 - Replace every placeholder with concrete text — no bracket tokens left.
-- Remove inline HTML comments that annotate a filled placeholder (e.g., `<!-- Example: ... -->`). Preserve structural block comments that describe section purpose unless the user explicitly requests a clean file.
+- Remove all HTML comment blocks (`<!-- ... -->`), including inline annotation comments and structural block comments.
 - Use RFC 2119 keywords (MUST, MUST NOT, SHOULD, SHOULD NOT) in uppercase with rationale, rather than vague lowercase "should".
 - Each principle section uses Roman numeral headings (`### I.`, `### II.`, ...) and follows this structure:
    - One-line `Rationale:` immediately after the heading.
@@ -114,9 +114,9 @@ If the constitution includes a principle about identifier naming (code style):
 
 For each checks file, derive its complete replacement content in memory:
 
-- `specs/checks/spec-criteria.md`: bullet lines representing technology-agnostic acceptance criteria derived from applicable principles. Each bullet MUST follow the format: `- **SC-C[N]**: [measurable, user-focused outcome]`.
-- `specs/checks/plan-check.md`: gate check lines derived from applicable principles. Each line MUST follow the format: `- **CC-[N]**: [gate check — what must be verified before implementation begins]`.
-- `specs/checks/tasks-concerns.md`: verification task lines derived from applicable principles. Each line MUST follow the format: `- [ ] [Verification task with concrete scope or action]`.
+- `specs/checks/spec-criteria.md`: one bullet per criterion, each following the format: `- [measurable, technology-agnostic acceptance criterion]`.
+- `specs/checks/plan-check.md`: one checkbox task per gate check, each following the format: `- [ ] [gate check — what must be verified before implementation begins]`.
+- `specs/checks/tasks-concerns.md`: one checkbox task per verification item, each following the format: `- [ ] [verification task with concrete scope or action]`.
 
 If a checks file has no applicable content (no principles map to it), its replacement content is an empty string — the file will still be written (or overwritten with an empty body) in Step 6.
 

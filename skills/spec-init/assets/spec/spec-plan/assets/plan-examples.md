@@ -2,12 +2,6 @@
 
 This file provides format examples for each section of plan-template.md. The `/spec-plan` skill SHOULD reference these examples when generating plan content, but MUST NOT copy them verbatim into the output.
 
-## Summary Example
-
-```markdown
-Build a single-user photo album organizer web application using Vite, React, and Convex backend.
-```
-
 ## Technical Context Examples
 
 ### Project Setup Format (New Projects)
@@ -18,20 +12,28 @@ Build a single-user photo album organizer web application using Vite, React, and
 
 - Python
   - FastAPI
-- Bun - Elysia - Zod
-  **Storage**:
+- Bun
+  - Elysia
+  - Zod
+
+**Storage**:
+
 - Database
   - Redis
   - PostgreSQL
-- File - S3
-  **Testing**:
+- File
+  - S3
+
+**Testing**:
+
 - Vitest
 - Playwright
-  **Target Platform**: N/A
-  **Project Type**: single / web / mobile
-  **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
-  **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
-  **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+
+**Target Platform**: N/A
+**Project Type**: single / web / mobile
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 ```
 
 ### Feature Format (Incremental Changes to Existing Project)

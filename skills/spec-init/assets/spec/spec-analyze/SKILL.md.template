@@ -73,8 +73,8 @@ Load only the minimal necessary context from each artifact:
 
 Create internal representations (do not include raw artifacts in output). Only build the sub-models for which source data is available (based on the availability map from Step 0) — if tasks.md is absent, skip "Task coverage mapping"; if constitution.md is absent, skip "Constitution rule set":
 
-- **Requirements inventory**: Each functional + non-functional requirement with a stable key. Derive the slug from the core action phrase, stripping leading modal verbs and subjects (`System MUST`, `User can`, `The app shall`, etc.). Examples: `"System MUST allow users to upload files"` → `upload-files`; `"User can reset password"` → `reset-password`. Use the shortest unambiguous imperative that identifies the requirement.
-- **User story/action inventory**: Discrete user actions with acceptance criteria.
+- **Requirements inventory**: Each functional + non-functional requirement with a stable key. Derive the slug from the core action phrase, stripping leading modal verbs and subjects (`System MUST`, `User can`, `The app shall`, etc.). Examples: `"System MUST allow users to upload files"` → `upload-files`; `"User can reset password"` → `reset-password`. Use the shortest unambiguous imperative that identifies the requirement. For each requirement and user story, also record its source line range in the originating file — this is required for location references (e.g., `spec.md:L45-52`) in the Step 3 findings table.
+- **User story/action inventory**: Discrete user actions with acceptance criteria. Record the source line range for each story.
 - **Task coverage mapping**: Map each task to one or more requirements or stories. Use this priority order:
    1. **Direct Story label match** (preferred): Tasks annotated with `[US1]`, `[US2]`, etc. in tasks.md map directly to the corresponding user story — use these as the primary mapping source. If a task carries multiple story labels (e.g., `[US1][US2]`), attribute it to all referenced stories.
    2. **Explicit reference patterns**: Tasks that reference a requirement ID or key phrase.
@@ -176,7 +176,7 @@ At the end of the report, output a concise Next Actions block. Map each recommen
 | Problem Source                                  | Recommended Command                                                                                     |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Ambiguous or incomplete requirements in spec.md | `/spec-clarify <spec-name>`                                                                              |
-| spec.md needs substantial rework                | `/spec-specify <spec-name>` (prompts before overwriting — will not silently replace existing spec)       |
+| spec.md needs substantial rework                | `/spec-specify <spec-name>` (runs collision detection — existing spec is only overwritten after explicit user confirmation) |
 | Architecture conflicts or plan needs updating   | `/spec-plan <spec-name>` (runs in update mode)                                                           |
 | Tasks missing coverage or format issues         | `/spec-tasks <spec-name>`                                                                                |
 | Constitution violations                         | `/spec-constitution` (amend constitution separately first)                                               |

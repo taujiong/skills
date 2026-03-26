@@ -1,9 +1,5 @@
 # Implementation Plan: [SPEC NAME]
 
-## Summary
-
-[Specification requirement + technical approach]
-
 ## Technical Context
 
 <!--

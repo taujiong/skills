@@ -99,7 +99,10 @@ If tasks.md does not contain any test tasks, skip TDD phase handling entirely.
 
 #### Progress Tracking and Error Handling
 
-- Report progress after each completed task and mark it as `[x]` in tasks.md immediately.
+- Report progress after each completed task. Mark tasks as `[x]` in tasks.md according to TDD phase:
+   - **Test tasks**: mark `[x]` immediately after the RED phase confirms the test fails as expected.
+   - **Implementation tasks**: mark `[x]` only after the full RED→GREEN cycle for the story is complete — i.e., all implementation tasks for that story are done AND all story tests pass.
+   - **Non-TDD tasks** (no test tasks in tasks.md): mark `[x]` immediately upon completion.
 - **Technical failures** (test failures in GREEN phase, build errors, lint errors): apply **escalating self-correction**:
    - **Attempt 1 — Fix the immediate error**: Analyze the error message and apply a targeted fix to the specific file/line that caused the failure.
    - **Attempt 2 — Review broader context**: Re-read the relevant section of plan.md (architecture, data model, dependencies) for the failing task. Check whether the failure stems from a misalignment between the implementation and the plan. Apply a context-informed fix.

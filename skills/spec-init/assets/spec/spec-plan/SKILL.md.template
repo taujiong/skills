@@ -41,8 +41,8 @@ Run all checks below in order. If any check fails, report the corresponding erro
    - If it **exists**: load the existing plan into memory and treat this operation as an **update**. The existing plan content serves as additional context during re-derivation in Step 2 — it is NOT discarded.
 - Check whether `specs/<spec-name>/tasks.md` exists and record the result in memory for use in Step 5.
 - Check whether `specs/checks/plan-check.md` exists:
-   - If it **exists**: read its content and store in memory as `constitution_check`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the generated `plan.md` in Step 2.
-   - If it does **not** exist: set `constitution_check` to an empty string and record a WARNING for Step 5:
+   - If it **exists**: read its content and store in memory as `constitution_plan_check`. This content will be injected into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block of the generated `plan.md` in Step 2.
+   - If it does **not** exist: set `constitution_plan_check` to an empty string and record a WARNING for Step 5:
 
       ```text
       WARNING: specs/checks/plan-check.md not found — the Constitution Check section will
@@ -88,9 +88,9 @@ Run all checks below in order. If any check fails, report the corresponding erro
       - Co-locate feature modules (handler + service + model) rather than splitting by layer — reduces cross-directory jumps for a feature-centric team workflow.
    - Omit entries for decisions that are either obvious from the spec or have no meaningful alternatives.
 
-4. Fill Constitution Check section by injecting `constitution_check` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
-   - Replace the content between the markers with `constitution_check`.
-   - If `constitution_check` is an empty string, leave the block empty — preserve both markers but write nothing between them.
+4. Fill Constitution Check section by injecting `constitution_plan_check` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
+   - Replace the content between the markers with `constitution_plan_check`.
+   - If `constitution_plan_check` is an empty string, leave the block empty — preserve both markers but write nothing between them.
    - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
    - After filling the section, review each check item against the current plan design. Classify violations by their RFC 2119 keyword:
       - **MUST / MUST NOT violations**: The plan cannot proceed. Abort with:
@@ -129,8 +129,8 @@ Run all checks below in order. If any check fails, report the corresponding erro
 
 Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
 
-- [ ] All mandatory template sections have concrete content (no unfilled `[PLACEHOLDER]` tokens)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches `constitution_check` loaded in Step 1 (empty block is acceptable if `constitution_check` is empty)
+- [ ] No unfilled `[PLACEHOLDER]` tokens remain in the content
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches `constitution_plan_check` loaded in Step 1 (empty block is acceptable if `constitution_plan_check` is empty)
 - [ ] File Modifications tree lists **all** files with Add / Modify / Delete annotations
 - [ ] Dependencies section explicitly lists all cross-file import relationships
 - [ ] Data Models section documents all entity changes
@@ -139,7 +139,7 @@ If any item still fails after 3 iterations, report it as a WARNING and ask the u
 
 ### Step 4 - Write
 
-After all validations pass, strip all `<!-- Example: ... -->` and `<!-- ... ACTION REQUIRED ... -->` HTML comment blocks from the content, then overwrite `specs/<spec-name>/plan.md` with the result.
+After all validations pass, strip all `<!-- ... -->` HTML comment blocks from the content **except** `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers, then overwrite `specs/<spec-name>/plan.md` with the result.
 
 ### Step 5 - Summarize
 
