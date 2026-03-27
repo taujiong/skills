@@ -1,6 +1,6 @@
 ---
 name: spec-init
-description: Deploy spec-driven development (SDD) skills and runtime directories to a project. Use when users want to initialize or set up the SDD workflow in a specific directory. Also triggers when init sdd, setup sdd, initialize spec workflow, or bootstrap spec-driven development are mentioned in the prompt.
+description: Deploy spec-driven development (SDD) skills and runtime directories to a project. Use when users want to initialize or set up the SDD workflow in a specific directory. Also triggers when users mention init sdd, setup sdd, initialize spec workflow, or bootstrap spec-driven development.
 ---
 
 ## User Input

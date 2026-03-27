@@ -5,7 +5,7 @@
 ### 1. Trigger Description Quality
 
 - The `description` field in the frontmatter must clearly state what the skill does and when it should be invoked.
-- It should include representative trigger phrases (e.g. "Also triggers when X or Y are mentioned").
+- It should include representative trigger phrases (e.g. "Also triggers when users mention review my code, check code quality, or audit changes").
 - It must not be so broad that it fires on unrelated requests, nor so narrow that it is never triggered.
 - The description should be self-contained — an agent reading only the description can decide whether to invoke the skill.
 

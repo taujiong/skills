@@ -1,6 +1,6 @@
 ---
 name: spec-specify
-description: Guide to create or update a specification about feature request, bug fix, or refactor. Use when users want to define clear requirements and acceptance criteria. Also triggers when user story, feature request are mentioned in the prompt.
+description: Guide to create or update a specification about feature request, bug fix, or refactor. Use when users want to define clear requirements and acceptance criteria. Also triggers when users mention user story or feature request.
 ---
 
 ## User Input
