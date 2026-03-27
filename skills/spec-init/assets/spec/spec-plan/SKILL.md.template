@@ -65,7 +65,7 @@ Run all checks below in order. If any check fails, report the corresponding erro
 
 ### Step 2 - Draft Plan from Template
 
-1. Read [plan-template.md](assets/plan-template.md) as the base structure for the plan (skip if updating an existing plan — use the loaded plan as the base instead). Read [plan-examples.md](assets/plan-examples.md) for format examples when filling each section — do NOT copy examples verbatim into the output.
+1. Read [plan-template.md](assets/plan-template.md) as the base structure for the plan (skip if updating an existing plan — use the loaded plan as the base instead). Use the format examples in the template comments when filling each section — do NOT copy examples verbatim into the output.
 
    **Update mode** (existing plan loaded in Step 1): Perform a **section-level merge** instead of a full overwrite. For each section, compare the existing content against what the current spec and project context would produce:
    - If the spec content driving that section has **changed**: re-derive the section, using the existing content as reference context (preserve manually written rationale or resolved `NEEDS CLARIFICATION` values when they remain valid under the updated spec). A rationale remains valid if the spec requirement it addresses has not changed in scope, acceptance criteria, or priority; if any of these have changed, re-derive the rationale.
@@ -88,10 +88,10 @@ Run all checks below in order. If any check fails, report the corresponding erro
       - Co-locate feature modules (handler + service + model) rather than splitting by layer — reduces cross-directory jumps for a feature-centric team workflow.
    - Omit entries for decisions that are either obvious from the spec or have no meaningful alternatives.
 
-4. Fill Constitution Check section by injecting `constitution_plan_check` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
+4. Fill Constitution Check section by injecting `constitution_plan_check` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block **verbatim** — do not modify, adapt, or reword the injected content:
    - Replace the content between the markers with `constitution_plan_check`.
-   - If `constitution_plan_check` is an empty string, leave the block empty — preserve both markers but write nothing between them.
-   - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
+   - If `constitution_plan_check` is an empty string, retain the section heading and preserve both markers, but add `<!-- N/A: No constitution defined — run /spec-constitution first -->` between them.
+   - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content inside or between the markers.
    - After filling the section, review each check item against the current plan design. Classify violations by their RFC 2119 keyword:
       - **MUST / MUST NOT violations**: The plan cannot proceed. Abort with:
 
@@ -130,7 +130,7 @@ Run all checks below in order. If any check fails, report the corresponding erro
 Silently self-correct any failing items and re-check (max 3 iterations). Only output the final checklist table once, after the last pass.
 
 - [ ] No unfilled `[PLACEHOLDER]` tokens remain in the content
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches `constitution_plan_check` loaded in Step 1 (empty block is acceptable if `constitution_plan_check` is empty)
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Constitution Check section; content between markers matches `constitution_plan_check` loaded in Step 1 verbatim (a `<!-- N/A: ... -->` comment is acceptable if `constitution_plan_check` is empty)
 - [ ] File Modifications tree lists **all** files with Add / Modify / Delete annotations
 - [ ] Dependencies section explicitly lists all cross-file import relationships
 - [ ] Data Models section documents all entity changes
@@ -139,7 +139,7 @@ If any item still fails after 3 iterations, report it as a WARNING and ask the u
 
 ### Step 4 - Write
 
-After all validations pass, strip all `<!-- ... -->` HTML comment blocks from the content **except** `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers, then overwrite `specs/<spec-name>/plan.md` with the result.
+After all validations pass, strip all `<!-- ... -->` HTML comment blocks from the content **except** `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers and `<!-- N/A: ... -->` annotations, then overwrite `specs/<spec-name>/plan.md` with the result.
 
 ### Step 5 - Summarize
 

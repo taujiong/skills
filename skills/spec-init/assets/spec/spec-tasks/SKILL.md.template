@@ -117,10 +117,10 @@ Run all checks below in order. If any check fails, report the corresponding erro
 For both modes, follow these rules when generating task content:
 
 1. Generate Setup phase tasks (e.g., project initialization, shared infrastructure setup).
-   - **OPTIONAL**: Skip this phase if `plan.md` contains no new project setup work (e.g., no new dependency files, no new directory structure to create).
+   - **OPTIONAL**: If `plan.md` contains no new project setup work (e.g., no new dependency files, no new directory structure to create), retain the `## Setup` section heading with the body replaced by `<!-- N/A: [brief reason] -->`. Do NOT omit the section.
 
 2. Generate Foundational phase tasks (e.g., core infrastructure that blocks all user stories).
-   - **OPTIONAL**: Skip this phase if `plan.md` contains no cross-story dependencies or shared models that MUST exist before any user story can begin.
+   - **OPTIONAL**: If `plan.md` contains no cross-story dependencies or shared models that MUST exist before any user story can begin, retain the `## Foundational` section heading with the body replaced by `<!-- N/A: [brief reason] -->`. Do NOT omit the section.
    - **CRITICAL**: No user story tasks can be added until all foundational tasks are defined.
 
 3. For each user story, starting with the highest priority (P1), then P2, etc. — follow the task format, granularity, organization, and phase structure defined in **Task Generation Rules** below.
@@ -128,14 +128,14 @@ For both modes, follow these rules when generating task content:
    - **Zero user stories** (e.g., pure infrastructure refactor): If the spec contains no user stories but has behavior-preservation scenarios or refactor work items, treat each scenario as an equivalent "story phase" for task organization purposes. If the spec truly has no actionable scenarios, report a WARNING and generate only Setup, Foundational, and Cross-Cutting Concerns phases.
 
 4. Generate final phase: Cross-Cutting Concerns (e.g., documentation, performance optimization, security hardening).
-   - Inject `constitution_tasks_concerns` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block:
+   - Inject `constitution_tasks_concerns` (loaded in Step 1) into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block **verbatim** — do not modify, adapt, or reword the injected content:
       - Replace the content between the markers with `constitution_tasks_concerns`.
       - If `constitution_tasks_concerns` is an empty string, retain the section heading but add a comment: `<!-- No constitution checks defined — skipping -->` and do not add placeholder tasks.
-      - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
-   - If `constitution_tasks_concerns` contains verification tasks, include ALL of them — do not silently drop any. For each task, assess its relevance to the current spec/plan context:
-      - **Relevant**: Include as a normal task with a concrete file path or scope derived from the current spec/plan where possible (e.g., "Run security scan on `src/api/`" rather than "Run security scan").
-      - **Not applicable**: Include the task but annotate it with `<!-- N/A: <brief reason, e.g. no database in this spec> -->` so the omission is visible and auditable rather than silent. Use these signals to judge applicability: absence of a database component, no external API, no user authentication in the spec/plan.
-   - Cross-cutting concern tasks continue the sequential Task ID numbering from the last user story task.
+      - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content inside or between the markers.
+   - After the closing `<!-- constitution:end -->` marker, generate **spec-specific tasks** derived from the constitution checks above. For each bullet in `constitution_tasks_concerns`, produce a concrete, actionable counterpart adapted to the actual files, scope, and context of this spec:
+      - **Relevant**: Render as a checkbox task (`- [ ] T### ...`) with an exact file path or scope derived from the current spec/plan (e.g., "Run security scan on `src/api/`" rather than "Run security scan"). Assign the next sequential Task ID.
+      - **Not applicable**: Render as a plain bullet (no checkbox) annotated with `<!-- N/A: <brief reason, e.g. no database in this spec> -->` — omit the Task ID entirely, since there is no action to take. Use these signals to judge applicability: absence of a database component, no external API, no user authentication in the spec/plan.
+   - Cross-cutting concern tasks outside the constitution block continue the sequential Task ID numbering from the last user story task.
 
 5. Fill the "Dependencies & Execution Order" section from the template based on the actual phases and user stories generated above.
 
@@ -147,7 +147,7 @@ Silently self-correct any failing items and re-check (max 3 iterations). Only ou
 - [ ] All tasks strictly follow the checklist format defined in Task Generation Rules (checkbox, Task ID, Story label where required, file path or scope)
 - [ ] Task ordering respects dependencies: foundational tasks before user stories, user stories in priority order, test Task IDs lower than implementation Task IDs within each story
 - [ ] Every file path referenced in a task appears in the File Modifications list from `plan.md` (skip this check if the list is empty; placeholder tokens like `[entity]` in paths count as unfilled templates and MUST be replaced with real paths before this check passes; cross-cutting tasks that span multiple files may use a scope description like `across src/api/` instead of a single path)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Cross-Cutting Concerns section; every verification task present in `constitution_tasks_concerns` (loaded in Step 1) is accounted for in the output — either as a concrete task (with spec/plan-specific file paths or scopes) or annotated with `<!-- N/A: ... -->` (none silently dropped); an empty block is acceptable if `constitution_tasks_concerns` is empty
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in the Cross-Cutting Concerns section; content between markers matches `constitution_tasks_concerns` loaded in Step 1 verbatim (empty block is acceptable if `constitution_tasks_concerns` is empty); every bullet in `constitution_tasks_concerns` has a corresponding spec-specific counterpart outside the block — either as a checkbox task (`- [ ] T###`) with spec/plan-specific paths, or as a plain bullet annotated with `<!-- N/A: ... -->` (no checkbox, no Task ID); none silently dropped
 
 If any item still fails after 3 iterations, flag it as a WARNING, note the discrepancy, and ask the user to provide the missing information before writing the file.
 
@@ -155,8 +155,8 @@ If any item still fails after 3 iterations, flag it as a WARNING, note the discr
 
 Before writing, strip all `<!-- ... -->` HTML comment blocks from the generated content **except**:
 
-- `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers and their boilerplate lines (always preserve)
-- `<!-- N/A: ... -->` annotations on cross-cutting tasks (always preserve)
+- `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers (always preserve)
+- `<!-- N/A: ... -->` annotations (always preserve — both inside and outside the constitution block)
 
 After all validations pass and cleanup is done, overwrite `specs/<spec-name>/tasks.md` with the completed content.
 
@@ -248,10 +248,10 @@ Every task MUST strictly follow this format:
 
 ### Phase Structure
 
-Phases use **semantic names** as their primary heading, not sequential numbers. This avoids confusion when optional phases (Setup, Foundational) are skipped.
+Phases use **semantic names** as their primary heading, not sequential numbers. Optional phases (Setup, Foundational) are always written to the output — if not needed, their body is replaced with `<!-- N/A: [brief reason] -->` rather than omitting the section.
 
-- **`## Setup`** (if needed): project initialization — skip if plan.md contains no setup work
-- **`## Foundational`** (if needed): blocking prerequisites — MUST complete before user stories
+- **`## Setup`** (optional): project initialization — write `<!-- N/A: [reason] -->` if plan.md contains no setup work
+- **`## Foundational`** (optional): blocking prerequisites — write `<!-- N/A: [reason] -->` if plan.md has no cross-story prerequisites; MUST complete before user stories when present
 - **`## US[N]: [Title] (Priority: P[N])`**: one phase per user story, in priority order (P1, P2, P3...)
    - Within each story: Tests (if included) → Models → Services → Endpoints → Integration
    - Test tasks MUST have lower Task IDs than their corresponding implementation tasks

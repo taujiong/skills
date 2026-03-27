@@ -1,149 +1,114 @@
-# Specification: [SPEC NAME]
+# Specification: [SPEC_NAME]
 
 ## Scope
 
 ### In Scope
 
-<!--
-List the capabilities, user groups, and system boundaries this spec covers.
-Be specific — vague scope leads to scope creep during implementation.
-Examples:
+<!-- Example:
 - Web-based user registration and login flow
 - Admin dashboard for managing user accounts
 - Integration with the existing email notification service
 -->
 
-- [Capability or boundary this spec covers]
-
 ### Out of Scope
 
-<!--
-Explicitly list what this spec does NOT cover.
-This prevents misaligned expectations and unnecessary implementation work.
-Examples:
+<!-- Example:
 - Mobile app support (planned for a future spec)
 - Third-party OAuth providers beyond Google and GitHub
 - Migration of existing user data from the legacy system
 -->
 
-- [Capability or boundary explicitly excluded]
-
 ## User Scenarios & Testing
 
-<!--
-Prioritize user stories as user journeys ordered by importance.
-Each story MUST be independently testable — implementing just ONE
-should yield a viable MVP that delivers value.
+<!-- Example (feature — user story format):
+### User Story 1 - Add to Cart (Priority: P1)
 
-Assign priorities (P1, P2, P3, etc.) where P1 is the most critical.
-Each story should be developable, testable, and deployable independently.
+User selects a product and adds it to their shopping cart.
 
-For Bug Fix specs: replace "User Story" with "Scenario" and describe
-reproduction steps with expected vs. actual behavior. At least one
-reproduction scenario is required.
+**Why this priority**: Core purchasing flow; no other story is meaningful without it.
 
-For Refactor specs: describe what behavior MUST remain unchanged.
-Scenarios verify behavior preservation, not new capabilities.
+**Independent Test**: Can be tested by adding a product as an authenticated user and verifying cart state.
+
+**Acceptance Scenarios**:
+
+1. **Given** the user is on a product page
+   **When** they click "Add to Cart"
+   **Then** the item appears in the cart with correct quantity and price
 -->
 
-### User Story 1 - [Brief Title] (Priority: P1)
+<!-- Example (bug fix — reproduction scenario format):
+### Scenario 1 - Duplicate order on double-submit (Priority: P1)
 
-[Describe this user journey in plain language]
+Users who click "Place Order" twice in quick succession receive two identical orders.
 
-**Why this priority**: [Explain the value and why it has this priority level]
+**Reproduction**:
+1. Navigate to checkout with items in cart
+2. Click "Place Order" twice within 500ms
+3. Observe: two orders created; expected: one order created
 
-**Independent Test**: [Describe how this can be tested independently — e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+**Before fix**: Two orders are created and both charged to the payment method.
+**After fix**: Only one order is created; subsequent submissions are rejected with "Order already placed."
 
-**Acceptance Scenarios**:
+**Regression Scenario**: Submit the order form twice in rapid succession — only one order MUST be created.
+-->
 
-1. **Given** [initial state]
-   **When** [action]
-   **Then** [expected outcome]
-2. **Given** [initial state]
-   **When** [action]
-   **Then** [expected outcome]
+<!-- Example (refactor — behavior preservation format):
+### Scenario 1 - User login behavior preserved (Priority: P1)
 
-### User Story 2 - [Brief Title] (Priority: P2)
+All existing login flows MUST behave identically after the authentication module is refactored.
 
-[Describe this user journey in plain language]
+**Behavior MUST NOT change**:
+- Successful login redirects to the dashboard
+- Failed login increments lockout counter and displays error message
+- Session expiry logs the user out and redirects to login page
 
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state]
-   **When** [action]
-   **Then** [expected outcome]
-
-[Add more user stories as needed, each with an assigned priority]
+**Verification**: Run existing login test suite; all tests MUST pass without modification.
+-->
 
 ## Edge Cases
 
-<!--
-List edge cases and failure scenarios with explicit handling strategies.
-Format: condition → handling strategy (do not use Given/When/Then here).
-Examples:
+<!-- Example:
 - User submits form with duplicate email → System displays "Email already registered" and highlights the field
 - Payment gateway times out after 30s → System cancels the transaction and notifies the user to retry
 -->
 
-- [Boundary condition] → [How the system handles it]
-- [Error scenario] → [How the system handles it]
-
 ## Clarifications
 
-<!-- No content yet -->
-<!-- When populated, use the following format:
+<!-- Example:
 ### Session 1
-- Q: [Question asked]
-  A: [Answer given]
+- Q: [QUESTION]
+  A: [ANSWER]
 -->
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability — e.g., "allow users to create accounts with a unique email address"]
-- **FR-002**: System MUST [specific capability — e.g., "send a verification email within 60 seconds of registration"]
-- **FR-003**: Users MUST be able to [key interaction — e.g., "reset their password via email link"]
-- **FR-004**: System MUST [data requirement — e.g., "persist user preferences across sessions"]
-- **FR-005**: System MUST [behavior — e.g., "log all authentication failures with timestamp and IP address"]
+<!-- Example:
+- **FR-001**: System MUST allow users to register with an email address and password
+- **FR-002**: System MUST send a verification email upon registration
+-->
 
 ### Non-Functional Requirements
 
-<!--
-Replace each placeholder with a specific, measurable target.
-Do not leave generic statements — they will fail the validation checklist.
+<!-- Example:
+- **NFR-001**: Registration flow MUST complete within 3 seconds under normal load
+- **NFR-002**: Automated tests MUST cover all acceptance scenarios defined in this spec
 -->
-
-- **NFR-001**: Performance MUST [measurable target — e.g., "return search results in under 2 seconds at the 95th percentile under 1,000 concurrent users"]
-- **NFR-002**: Availability MUST [measurable target — e.g., "maintain 99.9% uptime during business hours"]
-- **NFR-003**: Automated tests MUST cover all acceptance scenarios defined in this spec
 
 ## Success Criteria
 
-<!--
-Define measurable, technology-agnostic outcomes.
-These MUST be verifiable without knowing implementation details.
--->
-
+<!-- Project-wide quality standards from the constitution (injected verbatim): -->
 <!-- constitution:begin -->
 <!-- constitution:end -->
 
-<!--
-Add project-specific success criteria below (outside the constitution markers).
-Each criterion MUST be measurable and user/business-focused.
+<!-- Spec-specific success criteria derived from the constitution checks above, expressed as measurable outcomes for this particular spec. Example:
+- **SC-001**: Users can complete [PRIMARY_TASK] in under [N] minutes
+- **SC-002**: Task completion rate improves by [X]% compared to current baseline
 -->
-
-- **SC-001**: [User-observable outcome with metric — e.g., "Users can complete [primary task] in under [N] minutes"]
-- **SC-002**: [Business metric — e.g., "Task completion rate improves by [X]% compared to current baseline"]
 
 ## Assumptions
 
-<!-- No content yet -->
-<!-- When populated: list assumptions made during spec creation, each confirmed by stakeholders before implementation. -->
 <!-- Example:
 - Single-user system (no multi-tenancy required)
 - Users have stable internet connectivity

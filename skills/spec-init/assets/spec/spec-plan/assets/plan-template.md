@@ -1,32 +1,90 @@
-# Implementation Plan: [SPEC NAME]
+# Plan: [SPEC_NAME]
 
 ## Technical Context
 
-<!--
-Only include items essential to this specification. Empty is acceptable.
-Use the _project setup_ format for new projects; use the _feature_ format for incremental changes to an existing project.
-See plan-examples.md for format examples.
+<!-- Example (greenfield project):
+**Language/Toolset**: Python, Bun
+**Primary Dependencies**:
+- Python
+  - FastAPI
+- Bun
+  - Elysia
+  - Zod
+**Storage**:
+- Database
+  - PostgreSQL
+- File
+  - S3
+**Testing**:
+- Vitest
+- Playwright
+**Target Platform**: web
+**Performance Goals**: 1000 req/s
+**Constraints**: <200ms p95
+**Scale/Scope**: 10k users
+-->
+
+<!-- Example (incremental feature):
+**New Dependencies**:
+- react-query
+**Testing**:
+- Unit test for [SERVICE_NAME]
+- Integration test for [ENDPOINT_NAME]
 -->
 
 ## Core Changes
 
-<!-- Architecture-level decisions and design rationale. Focus on WHY, not which files change. -->
+<!-- Example:
+- Introduce a service layer between route handlers and data access — keeps business logic testable in isolation without spinning up HTTP infrastructure.
+- Use optimistic locking on the `Order` entity — prevents silent data loss under concurrent updates without the overhead of pessimistic locks.
+- Co-locate feature modules (handler + service + model) rather than splitting by layer — reduces cross-directory jumps for a feature-centric team workflow.
+-->
 
 ## Constitution Check
-
-_GATE: Must pass before implementation begins. Re-check after file modifications are finalized._
 
 <!-- constitution:begin -->
 <!-- constitution:end -->
 
 ## File Modifications
 
-<!-- List every file to be added, modified, or deleted using tree format with (Add) / (Modify) / (Delete) annotations. -->
+<!-- Example:
+root
+├── src
+│   ├── models
+│   │   └── album.ts (Add)
+│   ├── services
+│   │   └── album.ts (Add)
+│   │   ├── add `createAlbum` function
+│   │   └── add `deleteAlbum` function
+│   └── utils
+│       └── date.ts (Modify)
+│           └── add `parse` function
+└── tests
+    ├── models
+    │   └── album.ts (Add)
+    └── services
+        └── album.ts (Add)
+-->
 
 ## Dependencies
 
-<!-- List all cross-file import relationships. This prevents agents from recreating logic that already exists elsewhere. -->
+<!-- Example:
+- `src/services/album.ts` depends on `src/utils/date.ts` to import `parse`
+- `src/routes/album.ts` depends on `src/services/album.ts` to import `createAlbum`
+-->
 
 ## Data Models
 
-<!-- Document all entity changes with fields, relationships, constraints, validations, and state transitions. -->
+<!-- Example:
+1. Album
+   - [Add] id (string): unique identifier
+   - [Add] name (string): display name
+   - [Delete] legacyCode
+   - [Modify] updatedAt (string → timestamp): more accurate temporal precision
+   - [Constraint] name: required, max 255 chars
+   - [Relation] artistId → Artist.id (many-to-one)
+
+2. Order (state transitions)
+   - [State] pending → confirmed → shipped → delivered
+   - [State] pending → cancelled
+-->

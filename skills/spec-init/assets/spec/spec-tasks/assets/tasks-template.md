@@ -1,76 +1,64 @@
-# Tasks: [SPEC NAME]
+# Tasks: [SPEC_NAME]
 
-## Setup (Shared Infrastructure)
+## Setup
 
-<!-- Skip this phase if plan.md contains no new project setup work. -->
+<!-- Example:
+- [ ] T001 Initialize project structure per implementation plan
+- [ ] T002 Configure build tooling in package.json
+-->
 
-**Purpose**: Project initialization and basic structure
+## Foundational
 
-<!-- GENERATE_TASKS_HERE -->
+<!-- Example:
+- [ ] T003 Create database schema migrations in db/migrations/
+- [ ] T004 Implement shared auth middleware in src/middleware/auth.ts
+-->
 
-## Foundational (Blocking Prerequisites)
+## US[N]: [STORY_TITLE] (Priority: P[N]) MVP
 
-<!-- Skip this phase if plan.md contains no cross-story dependencies or shared models. -->
+**Goal**: [STORY_GOAL]
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
-
-**CRITICAL**: No user story work can begin until this phase is complete.
-
-<!-- GENERATE_TASKS_HERE -->
-
-**Checkpoint**: Foundation ready — user story implementation can now begin.
-
-## US[N]: [Title] (Priority: P[N]) [MVP_MARKER]
-
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
+**Independent Test**: [INDEPENDENT_TEST_DESCRIPTION]
 
 ### Tests for US[N]
 
-> Write these tests FIRST and ensure they FAIL before implementation.
-
-<!-- GENERATE_TASKS_HERE -->
+<!-- Example:
+- [ ] T005 [US1] Write unit tests for UserService in tests/services/user.test.ts
+- [ ] T006 [US1] Write integration tests for POST /users in tests/routes/users.test.ts
+-->
 
 ### Implementation for US[N]
 
-<!-- GENERATE_TASKS_HERE -->
-
-**Checkpoint**: US[N] should be fully functional and testable independently.
-
-<!-- Repeat for each user story from spec.md, in priority order (P1, P2, P3...). Use heading format "## US[N]: [Title] (Priority: P[N])". Mark the first user story phase with "MVP" marker. -->
+<!-- Example:
+- [ ] T007 [US1] Create User model in src/models/user.ts
+- [ ] T008 [US1] Implement UserService in src/services/user.ts
+- [ ] T009 [US1] Add POST /users route handler in src/routes/users.ts
+-->
 
 ## Cross-Cutting Concerns
-
-**Purpose**: Improvements that affect multiple user stories and constitutional compliance verification
 
 <!-- constitution:begin -->
 <!-- constitution:end -->
 
-<!-- GENERATE_TASKS_HERE: Quality gates and cross-cutting verification tasks -->
+<!-- Spec-specific tasks derived from the constitution checks above, adapted to the actual files, scope, and context of this spec. Example:
+- [ ] T020 Run linter across src/ and fix all errors
+- [ ] T021 Verify test coverage meets targets defined in spec
+- T022 Run security audit across src/api/ <!-- N/A: no external API in this spec -->
+
+-->
 
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-<!-- Derive dependencies from the phases generated above. -->
+<!-- Example:
+- Setup → Foundational → US1 → US2 → Cross-Cutting Concerns
+- Foundational MUST complete before any US phase begins
+-->
 
 ### User Story Dependencies
 
-<!-- Derive inter-story dependencies from the stories generated above. -->
-
-### Within Each User Story
-
-- Tests (if included) MUST be written and FAIL before implementation
-- Models before services
-- Services before endpoints
-- Core implementation before integration
-- Story complete before moving to next priority
-
-## Notes
-
-- [Story] label maps each task to a specific user story for traceability
-- Each user story SHOULD be independently completable and testable
-- Verify tests fail before implementing
-- Stop at any checkpoint to validate the story independently
-- Avoid vague tasks and cross-story dependencies that break independence
+<!-- Example:
+- US2 depends on US1 (requires User model from US1)
+- US3 is independent of US1 and US2
+-->

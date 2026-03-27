@@ -115,8 +115,8 @@ If the constitution includes a principle about identifier naming (code style):
 For each checks file, derive its complete replacement content in memory:
 
 - `specs/checks/spec-criteria.md`: one bullet per criterion, each following the format: `- [measurable, technology-agnostic acceptance criterion]`.
-- `specs/checks/plan-check.md`: one checkbox task per gate check, each following the format: `- [ ] [gate check — what must be verified before implementation begins]`.
-- `specs/checks/tasks-concerns.md`: one checkbox task per verification item, each following the format: `- [ ] [verification task with concrete scope or action]`.
+- `specs/checks/plan-check.md`: one bullet per gate check, each following the format: `- [gate check — what must be verified before implementation begins]`.
+- `specs/checks/tasks-concerns.md`: one bullet per verification item, each following the format: `- [verification task with concrete scope or action]`.
 
 If a checks file has no applicable content (no principles map to it), its replacement content is an empty string — the file will still be written (or overwritten with an empty body) in Step 6.
 

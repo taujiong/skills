@@ -172,11 +172,14 @@ After the user answers, validate the response. If ambiguous, ask for a quick dis
    - For **refactor** specs: describe what behavior MUST remain unchanged for existing users. User-facing scenarios focus on verifying behavior preservation.
    - Split into as small pieces as possible, each with clear acceptance criteria.
    - Example: CRUD todos → create todo, read todo, update todo, delete todo, each with its own scenario and criteria.
-4. Generate requirements:
+4. Write edge cases:
+   - Use the format `[condition] → [handling strategy]`. Do NOT use Given/When/Then format.
+   - Each entry states a boundary condition or failure mode and its explicit handling outcome.
+5. Generate requirements:
    - Each requirement MUST be testable.
    - Do not use vague terms like "fast", "intuitive", "secure" without measurable criteria.
    - Example: "System MUST allow users to create accounts" is acceptable; "System MUST be fast" is not, unless "fast" is defined with a measurable target.
-5. Define success criteria:
+6. Define success criteria:
 
    > Success criteria MUST be **measurable** (specific metrics), **technology-agnostic** (no frameworks/tools), **user-focused** (outcomes from user/business perspective), and **verifiable** without implementation details.
    >
@@ -186,11 +189,11 @@ After the user answers, validate the response. If ambiguous, ask for a quick dis
 
    - Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion).
 
-6. Follow the template section order exactly. Do not reorder sections. Optional sections (Clarifications, Assumptions) that have no content MUST retain their heading with the body replaced by `<!-- No content yet -->`.
-7. Inject constitution checks into the `<!-- constitution:begin -->` / `<!-- constitution:end -->` block in the `## Success Criteria` section:
-   - Replace the content between the markers with `constitution_spec_criteria` (loaded in Step 2).
-   - If `constitution_spec_criteria` is an empty string, leave the block empty — preserve both markers but write nothing between them.
-   - Preserve the markers themselves exactly as they appear in the template. Do not modify, remove, or add any content outside the markers.
+7. Follow the template section order exactly. Do not reorder sections. Optional sections (Clarifications, Assumptions) that have no content MUST retain their heading with the body replaced by `<!-- N/A -->`.
+8. Write the `## Success Criteria` section in two parts:
+   - **Inside the constitution block**: inject `constitution_spec_criteria` (loaded in Step 2) **verbatim** between the `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers — do not modify, adapt, or reword the injected content. If `constitution_spec_criteria` is an empty string, leave the block empty — preserve both markers but write nothing between them.
+   - **Outside the constitution block** (after `<!-- constitution:end -->`): generate spec-specific success criteria derived from the constitution checks above, expressed as measurable, technology-agnostic outcomes for this particular spec. These criteria MUST trace back to the constitution checks — they are the spec-level instantiation of those project-wide standards, not independently invented items. Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion).
+   - Preserve both markers exactly as they appear in the template. Do not modify, remove, or add any content inside the markers.
 
 **Do not write any files in this step.** Hold the complete specification content in memory — it is validated in Step 5 and written to disk in Step 6.
 
@@ -214,7 +217,7 @@ Review the spec (held in memory from Step 4) against the checklist below. Apply 
 - [ ] Assumptions are documented and clearly labeled (no hidden assumptions)
 - [ ] User stories are prioritized with explicit priority labels (P1, P2, P3, etc.) and each covers a primary flow
 - [ ] Written for non-technical stakeholders (no unexplained jargon)
-- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches `constitution_spec_criteria` loaded in Step 2 (empty block is acceptable if `constitution_spec_criteria` is empty)
+- [ ] `<!-- constitution:begin -->` / `<!-- constitution:end -->` marker pairs are intact in all sections where they appear in the template; content between markers matches `constitution_spec_criteria` loaded in Step 2 verbatim (empty block is acceptable if `constitution_spec_criteria` is empty); spec-specific success criteria appear after `<!-- constitution:end -->` and trace back to the constitution checks
 
 #### Feature-only (type: Feature)
 
@@ -279,7 +282,7 @@ Review the spec (held in memory from Step 4) against the checklist below. Apply 
 
 ### Step 6 - Write
 
-Create the directory `specs/<spec-name>/` if it does not already exist, then write the validated specification content (from Step 5) to `specs/<spec-name>/spec.md`.
+Before writing, strip all `<!-- ... -->` HTML comment blocks from the content **except** `<!-- constitution:begin -->` / `<!-- constitution:end -->` markers and `<!-- N/A -->` annotations on optional sections. Then create the directory `specs/<spec-name>/` if it does not already exist, and write the result to `specs/<spec-name>/spec.md`.
 
 ### Step 7 - Summarize
 
