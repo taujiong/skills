@@ -1,81 +1,75 @@
 # code-review
 
-Perform a comprehensive review of a git workspace or explicitly specified files. The skill adapts its review strategy based on the type of content changed, runs a project-wide overall check on every invocation, and always enforces project-level principles when `specs/constitution.md` is present.
+This skill guides to review git workspace changes or explicitly specified files for code quality, documentation, and skill definitions.
 
-## Invocation
+## When to use it
 
-```prompt
+Reach for this skill whenever you want a structured review of what has changed in your working tree — before committing, before opening a pull request, or just to get a second opinion on a batch of edits. It handles source code, prose documentation, and agent skill definitions in the same run, so you don't need to pick a strategy yourself.
+
+It's also the right choice when you're working inside a spec-driven project and want to verify that your implementation stays aligned with `spec.md`, `plan.md`, or `tasks.md`. If your project has a `specs/constitution.md`, the skill automatically enforces its principles across every file it reviews.
+
+When there's nothing to review — no git changes and no explicit paths — the skill exits silently rather than asking for input.
+
+## How to use it
+
+Trigger the skill with `/code-review`, optionally followed by a scope or a focus hint.
+
+**Review everything that has changed in the working tree:**
+
+```
+/code-review
+```
+
+**Review only what a specific commit introduced:**
+
+```
+/code-review abc1234
+```
+
+**Review changes relative to the main branch:**
+
+```
+/code-review main..HEAD
+```
+
+**Review a specific file or folder:**
+
+```
+/code-review src/auth.ts
+/code-review docs/
+```
+
+**Steer the review toward a particular concern:**
+
+```
+/code-review focus on security
+/code-review main..HEAD focus on performance
+```
+
+The skill figures out which content types are present (source code, documentation, skill definitions) and applies the right review strategy to each. You always get a single unified report.
+
+## Reference
+
+### Syntax
+
+```
 /code-review [scope] [focus]
 ```
 
-| Argument | Required | Description                                                                                                                                         |
-| -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scope`  | No       | A git ref range (`main..HEAD`), a commit SHA, or an explicit file path / glob pattern. Defaults to all staged, unstaged, and untracked (new) files. |
-| `focus`  | No       | Free-text emphasis, e.g. `"focus on security"` or `"only check the auth module"`.                                                                   |
+| Argument | Required | Description                                                                                                                         |
+| -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `scope`  | No       | A git ref range (`main..HEAD`), a commit SHA, or a file path / glob pattern. Defaults to all staged, unstaged, and untracked files. |
+| `focus`  | No       | Free-text emphasis, e.g. `"focus on security"` or `"only check the auth module"`.                                                   |
 
-**Examples:**
+### Output
 
-```prompt
-/code-review
-/code-review main..HEAD
-/code-review abc1234
-/code-review src/auth.ts
-/code-review docs/
-/code-review focus on performance
-```
-
-If no scope is provided and no git changes are detected, the skill exits silently with a brief message. Two scenarios trigger this:
-
-- **No changes:** "No changes detected in the working tree and no review target specified. Nothing to review."
-- **Not a git repo:** "Not a git repository and no review target specified. Nothing to review."
-
-The skill never prompts for input.
-
-## What Gets Reviewed
-
-The skill classifies every file in scope into one of three content type groups and applies the matching review strategy:
-
-| Group             | Matched files                                                                       | Strategy            |
-| ----------------- | ----------------------------------------------------------------------------------- | ------------------- |
-| **Source Code**   | Programming language files (`.ts`, `.py`, `.go`, `.java`, `.rs`, etc.)              | `strategy-code.md`  |
-| **Documentation** | Prose files (`.md`, `.mdx`, `.rst`, `.txt`, `.adoc`) that are not skill definitions | `strategy-docs.md`  |
-| **Agent Skills**  | `SKILL.md` files and their assets inside `skills/` directories                      | `strategy-skill.md` |
-
-A single review run can cover all three groups simultaneously.
-
-## Overall Review
-
-In addition to per-type analysis, every run includes a project-wide pass that is independent of content type:
-
-- **Docs Gap** — checks whether new modules, packages, or major features have a corresponding entry in `README.md` or `docs/`.
-- **Config Coverage** — checks whether global config files (lint, format, pre-commit hooks, CI pipelines) need updating to cover new file types or tools introduced by the changes.
-- **Typos** — scans all changed files for spelling mistakes in identifiers, strings, comments, and documentation.
-
-## Cross-cutting Checks
-
-Two additional checks are applied to all content types:
-
-### Constitution Compliance
-
-If `specs/constitution.md` exists at the project root, it is read before any other analysis and its principles are enforced across every changed file. Constitution rules take precedence over the default strategy checklists. Violations are always rated P1 or higher.
-
-### SDD Compliance
-
-If any of `spec.md`, `plan.md`, or `tasks.md` are **included in the current review scope** (not a global project search), the skill evaluates:
-
-- **Spec coverage** — are all requirements implemented?
-- **Plan adherence** — does the implementation match the architectural decisions?
-- **Task completeness** — do task statuses in `tasks.md` reflect the actual changes?
-
-## Output Format
-
-The report is structured and priority-ordered:
+The report is always structured in this order:
 
 ```
 ## Code Review Report
 
 ### Summary
-### ⚠ WARNING: Partial Staging Detected  (only when staged + unstaged/untracked coexist)
+### ⚠ WARNING: Partial Staging Detected   (only when staged + unstaged/untracked coexist)
 ### Issues
   #### P0 - Critical
   #### P1 - Major
@@ -85,38 +79,39 @@ The report is structured and priority-ordered:
   #### Docs Gap
   #### Config Coverage
   #### Typos
-### Constitution Compliance   (only when specs/constitution.md exists)
-### SDD Compliance            (only when SDD artifacts exist)
+### Constitution Compliance               (only when specs/constitution.md exists)
+### SDD Compliance                        (only when SDD artifacts are in scope)
   #### Spec Coverage
   #### Plan Adherence
   #### Task Completeness
 ### Highlights
-### Next Actions              (only when P0 or P1 issues exist)
+### Next Actions                          (only when P0 or P1 issues exist)
 ```
 
-Each issue follows the format:
+Each issue line follows this format:
 
 ```
 - [ ] [Group/Dimension] `file:line` — Description. **Recommendation:** ...
 ```
 
-Where `Group` is one of `Code`, `Docs`, `Skill`, `Overall`, `Constitution`, or `SDD`.
+`Group` is one of: `Code`, `Docs`, `Skill`, `Overall`, `Constitution`, or `SDD`.
 
-### Priority Levels
+**Priority levels:**
 
-| Level               | Meaning                                                                |
-| ------------------- | ---------------------------------------------------------------------- |
-| **P0 - Critical**   | Must fix before merging; correctness, security, or data-integrity risk |
-| **P1 - Major**      | Strongly recommended; significant quality or maintainability concern   |
-| **P2 - Minor**      | Suggested improvement; acceptable to defer                             |
-| **P3 - Suggestion** | Optional polish; style or micro-optimization                           |
+| Level           | Meaning                                                                |
+| --------------- | ---------------------------------------------------------------------- |
+| P0 - Critical   | Must fix before merging; correctness, security, or data-integrity risk |
+| P1 - Major      | Significant quality or maintainability concern                         |
+| P2 - Minor      | Suggested improvement; acceptable to defer                             |
+| P3 - Suggestion | Optional polish; style or micro-optimization                           |
 
-The output language follows the language used in the user's message.
+The output language matches the language used in the triggering message.
 
-## Review Strategies
+### Behavior notes
 
-Detailed checklists for each content type are defined in the skill's reference files:
-
-- [`assets/references/strategy-code.md`](../skills/code-review/assets/references/strategy-code.md) — naming, design principles, clean architecture, security, performance (constitution.md takes precedence where rules conflict)
-- [`assets/references/strategy-docs.md`](../skills/code-review/assets/references/strategy-docs.md) — audience detection, language style, accuracy, completeness, freshness, formatting
-- [`assets/references/strategy-skill.md`](../skills/code-review/assets/references/strategy-skill.md) — trigger quality, step clarity, idempotency, asset hygiene, output format
+- Files are classified into exactly one group: `skill_files` (any `SKILL.md` or `.md` inside a `skills/<name>/` subtree), `doc_files` (`.md`, `.mdx`, `.rst`, `.txt`, `.adoc` not in a skill subtree), or `code_files` (everything else).
+- Every run includes project-wide **Overall** checks (Docs Gap, Config Coverage, Typos) regardless of file type.
+- `specs/constitution.md`, if present, is loaded before any analysis and its rules take precedence. Constitution violations are never lower than P1.
+- SDD compliance (Spec Coverage, Plan Adherence, Task Completeness) is only evaluated when `spec.md`, `plan.md`, or `tasks.md` are part of the review scope — not just present in the project.
+- When both staged and unstaged/untracked changes exist, the report includes a `⚠ WARNING: Partial Staging Detected` section listing each category of files.
+- If no scope is provided and no git changes are detected, the skill exits with a brief message and no report.
