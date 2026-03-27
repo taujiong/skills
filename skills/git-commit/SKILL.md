@@ -1,6 +1,6 @@
 ---
 name: git-commit
-description: Guide to automate the git commit workflow. Use when users want to commit changes, stage and commit, generate a commit message, or finalize an editing session with a commit. Also triggers when "commit my changes", "help me commit", "ok commit it", "looks good commit", are mentioned in the prompt.
+description: Guide to automate the git commit workflow. Use when users want to commit changes, stage and commit, generate a commit message, or finalize an editing session with a commit. Also triggers when users mention commit my changes, help me commit, ok commit it, or looks good commit.
 ---
 
 ## Execution Flow

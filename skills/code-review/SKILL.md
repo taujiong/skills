@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Guide to perform a comprehensive review on git workspace changes or explicitly specified content. Use when users want to review source code, documentation/comments, or agent skill definitions. Also triggers when review my code, review changes, review commits, audit code quality, check code quality, inspect code, or review skill are mentioned in the prompt.
+description: Guide to perform a comprehensive review on git workspace changes or explicitly specified content. Use when users want to review source code, documentation/comments, or agent skill definitions. Also triggers when users mention review my code, review changes, review commits, audit code quality, check code quality, inspect code, or review skill.
 ---
 
 ## User Input

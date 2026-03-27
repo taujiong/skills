@@ -1,6 +1,6 @@
 ---
 name: spec-analyze
-description: Guide to perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md. Can run at any stage after spec.md exists — not only after all three artifacts are complete. Use when users want to validate the coherence and completeness of their specifications before implementation. Also triggers when analyze spec, validate spec, or review spec are mentioned in the prompt.
+description: Guide to perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md. Can run at any stage after spec.md exists — not only after all three artifacts are complete. Use when users want to validate the coherence and completeness of their specifications before implementation. Also triggers when users mention analyze spec, validate spec, or review spec.
 ---
 
 ## User Input
