@@ -1,6 +1,6 @@
 ---
 name: skill-creator-defaults
-description: Guide to project-specific defaults for skill creation. Use anytime skill-creator is active or when users want to create, write, or save a skill. Also triggers when users mention skill output location, skill writing style, or skill description format.
+description: Guide to project-specific defaults for skill creation. Use when users want to create a new skill, edit an existing skill, write SKILL.md, or modify any files in .agents/skills. Also triggers when users mention create skill, new skill, write skill, edit skill, or .agents/skills.
 ---
 
 # Skill Creator — Project Defaults
