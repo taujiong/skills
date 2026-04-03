@@ -56,7 +56,6 @@ If context is reusable, extract the change summary from the conversation and pro
 
 **Standard path** (no reusable context): Run `git diff --staged` and analyze:
 
-- The scope of changes (files, modules, subsystems affected)
 - The nature of changes (new feature, bug fix, refactor, config, docs, etc.)
 - The intent behind the changes — _why_ they were made, not just _what_ changed
 
@@ -65,7 +64,7 @@ If context is reusable, extract the change summary from the conversation and pro
 Construct the message following conventional commits:
 
 ```
-<type>(<scope>): <subject>
+<type>: <subject>
 ```
 
 **Type selection guide:**
@@ -96,27 +95,35 @@ omitted unless one of these conditions clearly applies:
 - The _reason_ for the change is non-obvious and critical for future maintainers
 - An issue or PR must be referenced (`Fixes #xxx`, `Closes #xxx`)
 
-If body/footer are needed, go to Step 3. Otherwise, skip directly to Step 4.
+If body/footer are needed, proceed to Step 3. Otherwise, proceed directly to Step 4.
 
-### Step 3 — Confirm Extended Message (Conditional)
+### Step 3 — Confirm Extended Message
 
-Skip this step unless body or footer content is warranted.
+**MUST use the `question` tool to present options to the user.** Never execute `git commit` with a multi-line message without user confirmation.
 
-Present the full commit message to the user:
+Use the `question` tool with:
+
+- **Question**: "How would you like to format this commit message?"
+- **Header**: "Commit Message Format"
+- **Options**:
+  1. **Use extended message** — Include body and footer for context
+  2. **Header only** — Keep it short: `<type>: <subject>`
+
+Before presenting the question, show the prepared extended message:
 
 ```
-<type>(<scope>): <subject>
+I've prepared an extended commit message:
+
+<type>: <subject>
 
 <body — explains the why, not the what>
 
 <footer — BREAKING CHANGE, Fixes #xxx, etc.>
 ```
 
-Explain clearly why the short format is insufficient for this particular commit.
-Then wait for explicit user approval before proceeding.
-
-If the user declines or requests simplification, drop the body/footer and return
-a header-only message. Go back to Step 2 if the subject itself needs revision.
+- If the user chooses option 1, proceed to Step 4 with the full message.
+- If the user chooses option 2, drop the body/footer and proceed to Step 4 with the header-only message.
+- If the user requests changes to the message, return to Step 2 to revise.
 
 ### Step 4 — Execute Commit
 
@@ -125,7 +132,7 @@ a header-only message. Go back to Step 2 if the subject itself needs revision.
 
   ```bash
   git commit -m "$(cat <<'EOF'
-  <type>(<scope>): <subject>
+  <type>: <subject>
 
   <body>
 
