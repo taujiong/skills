@@ -160,13 +160,17 @@ Severity definitions:
 | P2 - Minor      | Suggested improvement; acceptable to defer but worth tracking               |
 | P3 - Suggestion | Optional polish; style, micro-optimization, or nice-to-have                 |
 
-Each issue line follows this format:
+Each issue follows this format:
 
-```
-- [ ] [Group/Dimension] `file:line` — Problem description. **Recommendation:** what to do instead.
+```markdown
+- P[S].[N]
+  - **type**: [Group/Dimension]
+  - **location**: `file:line`
+  - **description**:
+  - **recommendation**:
 ```
 
-Where `Group` is one of `Code`, `Docs`, `Skill`, `Overall`, `Constitution`, or `SDD`, and `Dimension` is the specific dimension name from the loaded strategy or overall check (e.g. `Security`, `Accuracy`, `Trigger Description`, `Docs Gap`, `Config Coverage`, `Typo`).
+Where `S` is the severity level (0–3), `N` is the sequential issue number within that severity, `Group` is one of `Code`, `Docs`, `Skill`, `Overall`, `Constitution`, or `SDD`, and `Dimension` is the specific dimension name from the loaded strategy or overall check (e.g. `Security`, `Accuracy`, `Trigger Description`, `Docs Gap`, `Config Coverage`, `Typo`).
 
 ---
 
@@ -204,7 +208,13 @@ The review scope includes **both staged and unstaged/untracked changes**. This m
 ### Issues
 
 > Issues are grouped by severity, then by file within each severity level.
-> Format: - [ ] [Group/Dimension] `file:line` — Description. **Recommendation:** ...
+> Format:
+>
+> - P[S].[N]
+>   - **type**: [Group/Dimension]
+>   - **location**: `file:line`
+>   - **description**:
+>   - **recommendation**:
 
 #### P0 - Critical
 
